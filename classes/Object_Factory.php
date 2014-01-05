@@ -1,0 +1,28 @@
+<?php
+
+class WordPress_Object_Factory {
+	
+	static $objects = array();
+	
+	static function get_object( $name, $id ){
+		
+		if ( !isset(self::$objects[$name]) ){
+			self::$objects[$name] = array();
+		}
+		
+		if ( !isset(self::$objects[$name][$id]) ){
+			
+			self::set_object($name, $id);
+		}
+		
+		return self::$objects[$name][$id];
+	}
+	
+	static function set_object( $name, $id ){
+		
+		$class = 'WordPress_' . ucfirst($name) . '_Object';
+		
+		self::$objects[$name][$id] =& call_user_func( array($class, 'instance'), $id );	
+	}
+		
+}
