@@ -6,45 +6,63 @@ A prototype project for object-oriented WordPress data types.
 
 ## WordPress Today
 
-WordPress data types (which will henceforth be understood to be posts, users, taxonomies, terms, and the like) are largely "procedural" in structure and operation. While this may have been ideal in the past, it now creates inefficiencies, redundancies, and inconsisetencies, as WP has grown to be much more than was originally intended.
+WordPress data types (which will henceforth be understood to be posts, users, taxonomies, terms, and the like) lack a common structure, which has created an inconsistent and often inefficient codebase.
 
-The developers of WordPress have [recognized this] (https://core.trac.wordpress.org/ticket/12267), and with the advent of WP_User and WP_Post, seem to be moving towards object-orientation.
+The developers of WordPress seem to be moving towards object-orientation, starting with the advent of `WP_User` and `WP_Post`. (See [this trac ticket] (https://core.trac.wordpress.org/ticket/12267)).
 
-However, the current approach is piecemeal (at best) and without a consistent and replicable structure. This project aims to provide that structure.
+However, the current approach lacks a consistent and replicable structure. This project aims to provide that structure (or at least a possible solution).
+
 
 ## Project Overview
 
-This project provides a base (albeit, incomplete so far) on which to build WordPress objects that are consistent and efficient, without losing any of their current functionality. The structure allows for a easy transition to the use of traits, once supported.
+This project provides a base (albeit, so far incomplete) on which to build WordPress objects that minimize redundancy and maximize efficiency, without losing any current functionality. The structure allows for a simple transition to the use of traits, once supported.
 
-#### Core Classes
 
-There is one factory object, `WordPress_Object_Factory`, which is called to retrieve objects. This means the `new` keyword will never be used to instantiate a WordPress object.
+## Core Classes
 
-There are two abstract/base classes:
+#### `WordPress_Object_Factory`
+
+Objects are created, stored in, and returned via this "factory" object. This means the `new` keyword will not be used to instantiate a WordPress object (except in special cases).
+
+The factory object takes care of object instantiation and mapping object types to their proper class.
+
+#### Abstract Classes
+
+There are two abstract classes which form the common object codebase:
 	
- * `WordPress_Object` - this is the base abstract class that holds common properties and general methods for data manipulation and operation. All objects inherit this class.
- * `WordPress_Object_With_Metadata` - this abstract class extends `WordPress_Object` to provide additional methods and properties to manipulate object metadata, for those that support it. (Trait candidate)
+ * **`WordPress_Object`** - this is the base abstract class that holds common properties and general methods used for data manipulation and operation (i.e. same for all objects). All data objects inherit this class.
+ * **`WordPress_Object_With_Metadata`** - this abstract class extends `WordPress_Object` to provide additional methods and properties to manipulate object metadata, for those that support it. (Trait candidate)
 
-With these, one can begin to construct the actual WordPress classes. Any class methods or properties defined beyond this point should be unique to that object (i.e. don't repeat yourself - at all).
-
-#### `WordPress_Post_Object`
-
-This class inherits the `WordPress_Object_With_Metadata` because, as you likely guessed, posts have metadata.
-
-Each `WordPress_Post_Object` instance represents a single post, _regardless of its post-type_ (i.e. there will not be a `WordPress_Page_Object` or similar).
-
-The methods defined in this class are specific to posts, but not all "post-specific" functionality must be defined (read on).
+With these, one can begin to construct the actual WordPress classes. Any class methods or properties defined beyond this point should be unique to that object so as to avoid redundancy.
 
 
 ## Magic
 
-The classes make heavy use of magic methods, including `__isset()`, `__get()`, `__set()`, and `__call()`. Child classes can override these methods to provide additional functionality (in fact, this is an essential part of the structure).
+The classes make use of magic methods, including `__isset()`, `__get()`, `__set()`, and `__call()`. Child classes can override these methods to provide additional functionality (this is actually an essential part of the structure).
 
-The `__call()` method, in particular, does some quite magical things:
+The `__call()` method, in particular, is quite important:
 
- * Allows you to call non-existant methods: `get_{$property}` (get), `has_{$property}` (isset), `set_{$property}` (set), and `the_{$property}` (echo/print).
- * Allows you to call non-existant methods of non-existant properties: e.g. `$post->the_title()` will print the object's `$post_title`.
- * Filters return values using object-specific filters. This means `$user->get_name()` will apply a different filter than `$post->get_name()`, even though neither object has a `get_name()` method.
+ * Allows you to call _non-existant methods_:
+ 	* `get_{$property}` (get), 
+ 	* `has_{$property}` (isset), 
+ 	* `set_{$property}` (set), and 
+ 	* `the_{$property}` (echo/print).
+ * Allows you to call _non-existant methods_ of _non-existant properties_ through the use of **"key aliases"**: 
+ 	* e.g. `$post->the_title()` will print the object's `$post_title`
+ 	* e.g. `$post->get_author()` will return the object's `$post_author`
+ * Filters return values using object-specific filters. 
+ 	* For example, calling `->get_name()` on a (currently non-existant) `WordPress_User_Object` will apply a different filter than calling `->get_name()` on `WordPress_Post_Object`, even though neither object has defined a `get_name()` method. Note we could also call `->get_post_name()` on `WordPress_Post_Object` for the same result.
+
+
+## Object Classes
+
+#### `WordPress_Post_Object`
+
+This class inherits the `WordPress_Object_With_Metadata` class because posts have metadata.
+
+Each `WordPress_Post_Object` instance represents a single post, _regardless of its post-type_. You can create classes for specific post types, but these will inherit the `WordPress_Post_Object` class.
+
+The methods defined in this class are specific to posts, but not all "post-specific" functionality must be defined (more on that below).
 
 
 ## Examples
@@ -57,9 +75,13 @@ Some things are easier shown than said. All examples below will use the only cur
 $post = x_wp_get_object( 'post', $post_id );
 ```
 
-The function above will call `WordPress_Object_Factory::get_object( 'post', $post_id )` and return a `WordPress_Post_Object` instance.
+The function above will call, and is the same as:
+```php
+WordPress_Object_Factory::get_object( 'post', $post_id )` and return a `WordPress_Post_Object` instance.
+```
 
-We can can also call `x_wp_get_post_object( $post_id )` for the same result.
+We could also call `x_wp_get_post_object( $post_id )` for the same result.
+
 
 #### Example 2: Accessing Object Properties
 
@@ -68,22 +90,29 @@ Using the inherited magic methods, we can access object properties like so:
 ```php
 // Does object have a post_title property set?
 $post->has_post_title();
+// or $post->has_title();
 
 // Get object's post_title
 $post->get_post_title();
+// or $post->get_title();
 
 // Set object's post_title (does not save to DB)
 $post->set_post_title('Something');
+// or $post->set_title('Something');
 
 // Echo object's post_title
 $post->the_post_title();
+// or $post->the_title();
 ```
 
 We can also use the methods inherited from the `WordPress_Object_With_Metadata` class:
 
 ```php
-// Get metadata
+// Get metadata entry
 $post->get_meta( 'metakey' );
+
+// Get all metadata
+$post->get_meta();
 
 // Add/update metadata (saved to DB)
 $post->update_meta( 'metakey', 'value' );
