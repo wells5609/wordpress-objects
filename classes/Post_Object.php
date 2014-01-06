@@ -2,6 +2,8 @@
 
 class WordPress_Post_Object extends WordPress_Object_With_Metadata {
 	
+	public $filter; // not DB field
+	
 	protected $_object_name = 'post';
 	
 	protected $_primary_key = 'ID';
@@ -15,9 +17,9 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata {
 	protected $_delete_meta_callback	= 'delete_post_meta';
 	
 	// Called by WordPress_Object_Factory once per id
-	static function instance( $id ){
+	static function get_instance_data( $id ){
 		
-		return new self( get_post( $id, ARRAY_A ) );
+		return get_post( $id, ARRAY_A );
 	}
 	
 	public function is_page(){
@@ -36,62 +38,104 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata {
 		return post_password_required( $this );
 	}
 	
+	public function has_post_parent(){
+		return 0 !== $this->post_parent;	
+	}
 	
-	/* ======= Method Overrides ======== */
+	
+	/* ======= (Magic) Method Overrides ======== */
 	
 	function the_post_title( $before = '', $after = '' ){
 		
-		echo $before . $this->filter('post_title', $this->post_title) . $after;
+		// Calling ->get_post_title() means the value will be run through filter_value() 
+		echo $before . $this->get_post_title() . $after;
 	}
 	
-	function get_date( $d = '' ) {
+	function get_post_date( $d = '' ){
+		$the_date = '';
 		
 		if ( '' == $d )
-			$the_date = mysql2date( get_option('date_format'), $this->post_date );
-		else
-			$the_date = mysql2date( $d, $this->post_date );
+			$d = get_option('date_format');
+		
+		$the_date .= $this->get_time( $d, false, true );
 	
-		return apply_filters( 'get_the_date', $the_date, $d );
+		return apply_filters('get_the_date', $the_date, $d);
 	}
 	
-	function get_modified_date($d = '') {
-
+	function get_post_modified( $d = '' ){
 		if ( '' == $d )
-			$the_time = $this->get_modified_time( get_option('date_format'), null, true);
-		else
-			$the_time = $this->get_modified_time( $d, null, true );
+			$d = get_option('date_format');
 		
-		return apply_filters('get_the_modified_date', $the_time, $d);
+		$the_time = $this->get_modified_time( $d, false, true );
+		
+		return apply_filters('get_the_modified_date', $the_time, $d);	
 	}
-
-	function get_time( $d = 'U', $gmt = false, $translate = false ) { // returns timestamp
+	
+		/** Alias for consistent method names */ 
+		function get_modified_date( $d = '' ){
+			return $this->get_post_modified( $d );	
+		}
+			
+	
+	/* ======= Time ======== */
+	
+	// returns timestamp
+	function get_time( $d = 'U', $gmt = false, $translate = false ) { 
 		
-		if ( $gmt )
-			$time = $this->post_date_gmt;
-		else
-			$time = $this->post_date;
+		$time = $gmt ? $this->post_date_gmt : $this->post_date;
 	
 		$time = mysql2date( $d, $time, $translate );
 		
 		return apply_filters( 'get_post_time', $time, $d, $gmt );
 	}
 	
+	// returns timestamp
 	function get_modified_time( $d = 'U', $gmt = false, $translate = false ){
 		
-		if ( $gmt )
-			$time = $this->post_modified_gmt;
-		else
-			$time = $this->post_modified;
+		$time = $gmt ? $this->post_modified_gmt : $this->post_modified;
 		
-		$time = mysql2date($d, $time, $translate);
+		$time = mysql2date( $d, $time, $translate );
 	
-		return apply_filters('get_post_modified_time', $time, $d, $gmt);	
+		return apply_filters( 'get_post_modified_time', $time, $d, $gmt );	
 	}
 	
 	
-	/* ======= Property Filters ======== */
+	/* ======= Sticky post ======== */
+	
+	function is_sticky() {
 		
-	function filter_output( $key, $value ){
+		$stickies = get_option('sticky_posts');
+	
+		if ( !is_array( $stickies ) )
+			return false;
+	
+		if ( in_array( $this->get_id(), $stickies ) )
+			return true;
+	
+		return false;
+	}
+	
+	function unstick_post(){
+		
+		$stickies = get_option('sticky_posts');
+	
+		if ( !is_array($stickies) || ! in_array($this->get_id(), $stickies) )
+			return;
+	
+		$offset = array_search($this->get_id(), $stickies);
+		
+		if ( false === $offset )
+			return;
+		
+		array_splice($stickies, $offset, 1);
+	
+		update_option('sticky_posts', $stickies);
+	}
+	
+		
+	/* ======= Filters ======== */
+	
+	function filter_value( $key, $value ){
 		
 		switch($key){
 			
@@ -111,24 +155,23 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata {
 			case 'guid':
 				return apply_filters( 'get_the_guid', $value );
 			
-			case 'excerpt':
 			case 'post_excerpt':
 				return post_password_required() 
 					? __( 'There is no excerpt because this is a protected post.' ) 
 					: apply_filters( 'get_the_excerpt', $value );
 			
-			case 'date':
-			case 'post_date':
-				$the_date = $this->get_date( get_option('date_format') );
-				return apply_filters('get_the_date', $the_date, $d);
-			
-			case 'modified_date':
-			case 'post_modified_date':
-				$the_time = $this->get_modified_time( get_option('date_format'), false, true );
-				return apply_filters( 'get_the_modified_date', $the_time );
-			
 			default: return $value;
 		}
+	}
+	
+	function filter_output( $key, $value ){
+		
+		switch($key){
+			
+			
+			default: return $value;	
+		}	
+		
 	}
 	
 }

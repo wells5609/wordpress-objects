@@ -20,9 +20,13 @@ class WordPress_Object_Factory {
 	
 	static function set_object( $name, $id ){
 		
-		$class = 'WordPress_' . ucfirst($name) . '_Object';
+		$base_class = 'WordPress_' . ucfirst($name) . '_Object';
 		
-		self::$objects[$name][$id] =& call_user_func( array($class, 'instance'), $id );	
+		$data = call_user_func( array($base_class, 'get_instance_data'), $id );
+		
+		$class = apply_filters( 'wordpress_object_class', $base_class, $data );
+		
+		self::$objects[$name][$id] = new $class( $data );
 	}
 		
 }

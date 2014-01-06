@@ -3,7 +3,7 @@
 Plugin name: WordPress Objects
 Description: Prototype for object-oriented WordPress data (posts, comments, users, etc.). Uses existing WordPress API (functions) and relies heavily on magic methods.
 Author: wells
-Version: 0.1-alpha
+Version: 0.1.1
 */
 
 if ( function_exists('xpl_autoload') ){
@@ -70,6 +70,30 @@ add_action('init', '_wp_objects_init');
 
 $GLOBALS['_x_wp_object_keys'] = array();
 $GLOBALS['_x_wp_object_key_aliases'] = array();
+
+
+add_filter('wordpress_object_class', '_switch_object_class', 10, 2);
+
+	function _switch_object_class( $class, $data ){
+		
+		if ( isset($data['post_type']) && 'page' === $data['post_type'] ){
+			
+			return 'WordPress_Page_Object';
+		}
+		
+		return $class;
+	}
+	
+	
+class WordPress_Page_Object extends WordPress_Post_Object {
+	
+	
+	function am_i_a_page(){
+		
+		echo 'Yes!';	
+	}
+		
+}
 
 /**
 * Register keys for an object
