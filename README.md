@@ -75,9 +75,9 @@ Some things are easier shown than said. All examples below will use the only cur
 $post = x_wp_get_object( 'post', $post_id );
 ```
 
-The function above will call, and is the same as:
+The function above will return a `WordPress_Post_Object` instance by calling:
 ```php
-WordPress_Object_Factory::get_object( 'post', $post_id )` and return a `WordPress_Post_Object` instance.
+WordPress_Object_Factory::get_object( 'post', $post_id )`
 ```
 
 We could also call `x_wp_get_post_object( $post_id )` for the same result.
