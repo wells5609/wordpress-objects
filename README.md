@@ -6,11 +6,7 @@ A prototype project for object-oriented WordPress data types.
 
 ## WordPress Today
 
-WordPress data types (which will henceforth be understood to be posts, users, taxonomies, terms, and the like) lack a common structure, which has created an inconsistent and often inefficient codebase.
-
-The developers of WordPress seem to be moving towards object-orientation, starting with the advent of `WP_User` and `WP_Post`. (See [this trac ticket] (https://core.trac.wordpress.org/ticket/12267)).
-
-However, the current approach lacks a consistent and replicable structure. This project aims to provide that structure (or at least a possible solution).
+WordPress data types (which will henceforth be understood to be posts, users, taxonomies, terms, and the like) lack a common structure, which has created an inconsistent and often inefficient codebase. The developers of WordPress seem to be moving towards object-orientation, starting with the advent of `WP_User` and `WP_Post`. (See [this trac ticket] (https://core.trac.wordpress.org/ticket/12267)). However, the current approach lacks a consistent and replicable structure. This project aims to provide that structure (or at least a possible solution).
 
 
 ## Project Overview
@@ -51,7 +47,7 @@ The `__call()` method, in particular, is quite important:
  	* e.g. `$post->the_title()` will print the object's `$post_title`
  	* e.g. `$post->get_author()` will return the object's `$post_author`
  * Filters return values using object-specific filters. 
- 	* For example, calling `->get_name()` on a (currently non-existant) `WordPress_User_Object` will apply a different filter than calling `->get_name()` on `WordPress_Post_Object`, even though neither object has defined a `get_name()` method. Note we could also call `->get_post_name()` on `WordPress_Post_Object` for the same result.
+ 	* For example, calling `->get_name()` on a `WordPress_User_Object` will apply a different filter than calling `->get_name()` on `WordPress_Post_Object`, even though neither object has defined a `get_name()` method. Note we could also call `->get_post_name()` on `WordPress_Post_Object` for the same result.
 
 
 ## Object Classes
@@ -65,9 +61,39 @@ Each `WordPress_Post_Object` instance represents a single post, _regardless of i
 The methods defined in this class are specific to posts, but not all "post-specific" functionality must be defined (more on that below).
 
 
+## Key Aliases
+
+Sometimes we want to access an object property using a different name (key) than that which is defined by the schema.
+
+For example, WordPress accesses post titles (i.e. `$post_title` property of Post objects) using `get_the_title()` and `the_title()` functions. This creates an issue for magically mapped methods, since `title` or `the_title` is not an object property.
+
+This is solved using key aliases. In the case above, we can set a key alias for `post_title` as `title` - this will tell the magic methods to use the `$post_title` property for calls to `*_title()` (e.g. `->has_title()`, `->get_title()`, etc.).
+
+Furthermore, we can override the default magic methods by defining a method using the _key_ name:
+
+```php
+// in WordPress_Post_Object:
+
+public function the_post_title( $before = '', $after = '' ){
+	echo $before . $this->get_post_title() . $after;
+}
+
+```
+
+Because we've added an alias called `title` for the `post_title` property, both of the methods below will print the same result:
+
+```php
+$post->the_title( '<em>', '</em>' );
+
+// is identical to:
+$post->the_post_title( '<em>', '</em>' );
+
+```
+
+
 ## Examples
 
-Some things are easier shown than said. All examples below will use the only currently available class, `WordPress_Post_Object`.
+Some things are easier shown than said. All examples below will use the `WordPress_Post_Object` class.
 
 #### Example 1: Getting an Object from ID
 
