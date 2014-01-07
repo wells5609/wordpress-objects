@@ -22,6 +22,14 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 	protected $_update_meta_callback	= 'update_user_meta';
 	protected $_delete_meta_callback	= 'delete_user_meta';
 	
+	// from WP_User
+	protected static $back_compat_keys;
+	
+	
+	/**
+	* Returns the object data to the factory for object instantiation
+	* The object will not necessarily use this class directly - may be child.
+	*/
 	static function get_instance_data( $id ){
 		
 		return (array) get_userdata( $id )->data;	
@@ -29,17 +37,84 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 	
 	// Called by constructor
 	protected function onImport(){
-	
+		
+		if ( ! isset( self::$back_compat_keys ) ) {
+			$prefix = $GLOBALS['wpdb']->prefix;
+			self::$back_compat_keys = array(
+				'user_firstname' => 'first_name',
+				'user_lastname' => 'last_name',
+				'user_description' => 'description',
+				'user_level' => $prefix . 'user_level',
+				$prefix . 'usersettings' => $prefix . 'user-settings',
+				$prefix . 'usersettingstime' => $prefix . 'user-settings-time',
+			);
+		}
+		
 		$this->init();
 	}
 	
-	// Can be re-called to setup user capabilities for different blog
+	// Can be re-called to setup user capabilities for different blog ?
 	public function init( $blog_id = '' ){
 		
 		$this->for_blog( $blog_id );	
 	}
 	
 	
+	function __isset( $key ) {
+		if ( 'id' == $key ) {
+			_deprecated_argument( 'WP_User->id', '2.1', __( 'Use <code>WP_User->ID</code> instead.' ) );
+			$key = 'ID';
+		}
+
+		if ( isset( $this->$key ) )
+			return true;
+
+		if ( isset( self::$back_compat_keys[ $key ] ) )
+			$key = self::$back_compat_keys[ $key ];
+				
+		return metadata_exists( 'user', $this->get_id(), $key );
+	}
+
+	/**
+	 * Magic method for accessing custom fields
+	 * @since 3.3.0
+	 */
+	function __get( $key ) {
+		if ( 'id' == $key ) {
+			_deprecated_argument( 'WP_User->id', '2.1', __( 'Use <code>WP_User->ID</code> instead.' ) );
+			return $this->get_id();
+		}
+
+		if ( isset( $this->$key ) ) {
+			$value = $this->$key;
+		} else {
+			if ( isset( self::$back_compat_keys[ $key ] ) )
+				$key = self::$back_compat_keys[ $key ];
+			$value = $this->get_meta( $key, true, $key );
+		}
+
+		if ( $this->filter ) {
+			$value = sanitize_user_field( $key, $value, $this->get_id(), $this->filter );
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Magic method for setting custom fields
+	 * @since 3.3.0
+	 */
+	function __set( $key, $value ) {
+		if ( 'id' == $key ) {
+			_deprecated_argument( '->id', '2.1', __( "Use <code>{$this->_primary_key}</code> instead." ) );
+			$this->ID = $value;
+			return;
+		}
+
+		$this->$key = $value;
+	}
+
+
 	/* ======= Roles/Capabilities ======== */
 	
 	public function for_blog( $blog_id = '' ) {
@@ -62,7 +137,7 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 		else
 			$this->cap_key = $cap_key;
 
-		$this->caps = get_user_meta( $this->get_id(), $this->cap_key, true );
+		$this->caps = $this->get_meta( $this->cap_key, true );
 
 		if ( ! is_array($this->caps) )
 			$this->caps = array();

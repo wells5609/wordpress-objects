@@ -2,19 +2,7 @@
 
 abstract class WordPress_Object_With_Metadata extends WordPress_Object {
 	
-	public $meta = array();
-	
 	protected $_meta_type;
-	
-	
-	function setSubProperty( $property, $key, $value ){
-		
-		if ( !isset($this->$property) ){
-			$this->$property = array();
-		}
-		
-		return $this->$property[$key] = $value;
-	}
 	
 	/**
 	* Returns meta value for given key.
@@ -26,7 +14,7 @@ abstract class WordPress_Object_With_Metadata extends WordPress_Object {
 			
 			$this->{$property} = array();
 			
-			if ( $callback = $this->getMetaCallback('get_meta') ){
+			if ( $callback = $this->getFunctionCallback(__FUNCTION__) ){
 				$value = $callback( $this->get_id(), $key, $single );
 			}
 			else {
@@ -56,7 +44,7 @@ abstract class WordPress_Object_With_Metadata extends WordPress_Object {
 	*/
 	function update_meta( $key, $value, $prev_value = null, $property = 'meta' ){
 				
-		if ( $callback = $this->getMetaCallback(__FUNCTION__) ){
+		if ( $callback = $this->getFunctionCallback(__FUNCTION__) ){
 			$callback( $this->get_id(), $key, $value, $prev_value );
 		}
 		else {
@@ -74,7 +62,7 @@ abstract class WordPress_Object_With_Metadata extends WordPress_Object {
 	*/
 	function delete_meta( $key, $value = '', $delete_all = false, $property = 'meta' ){
 		
-		if ( $callback = $this->getMetaCallback(__FUNCTION__) ){
+		if ( $callback = $this->getFunctionCallback(__FUNCTION__) ){
 			$callback( $this->get_id(), $key, $value );
 		}
 		else {
@@ -84,17 +72,6 @@ abstract class WordPress_Object_With_Metadata extends WordPress_Object {
 		if ( isset($this->{$property}[$key]) ){
 			unset($this->{$property}[$key]);
 		}
-	}
-	
-	/**
-	* Returns callback function string, if set, to use instead of 
-	* corresponding *_metadata() function, otherwise false.
-	*/
-	protected function getMetaCallback( $func ){
-		if ( isset($this->{'_' . $func . '_callback'}) ){
-			return $this->{'_' . $func . '_callback'};
-		}
-		return false;
 	}
 	
 	/**

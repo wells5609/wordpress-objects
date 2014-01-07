@@ -7,12 +7,15 @@ abstract class WordPress_Object {
 	protected $_primary_key;
 	
 	
-	/* ============ Abstract ============ */
+	/* ============ Abstract methods (required) ============ */
 	
+	/**
+	* Returns array of object data - imported as properties.
+	*/
 	abstract static function get_instance_data( $id );
 	
 	/**
-	* Filters a property value
+	* Filters a property value.
 	*/
 	abstract protected function filter_value( $key, $value );
 	
@@ -22,15 +25,18 @@ abstract class WordPress_Object {
 	abstract protected function filter_output( $key, $value );
 	
 	
+	/* ============ Protected methods (optional) ============ */
+	
 	/**
-	* Run after construction.
+	* Called by constructor to continue instantiation.
 	*/
 	protected function onImport(){}
 	
 	
-	/* ============ Magic ============ */
+	/* ============ Magic methods ============ */
 	
-	function __construct( &$data ){
+	// Imports data and calls ->onImport()
+	final function __construct( &$data ){
 		
 		$this->import_properties( (array) $data );
 		
@@ -53,8 +59,8 @@ abstract class WordPress_Object {
 	}
 	
 	/**
-	* Magic has_*(), get_*(), set_*(), and the_*() methods 
-	* based on existance of property.
+	* has_*(), get_*(), set_*(), and the_*() methods based on 
+	* existance of property.
 	*/
 	function __call($function, $arguments){
 		
@@ -68,7 +74,7 @@ abstract class WordPress_Object {
 			
 			if ( method_exists( $this, 'has_' . $property ) ){
 				
-				return $this->callThis( 'has_' . $property, $arguments );
+				return $this->call( 'has_' . $property, $arguments );
 			}
 			
 			return isset($this->$property);
@@ -95,7 +101,7 @@ abstract class WordPress_Object {
 			
 			if ( method_exists( $this, 'get_' . $property ) ){
 				
-				return $this->callThis( 'get_' . $property, $arguments );
+				return $this->call( 'get_' . $property, $arguments );
 			}
 			
 			return $this->filter_value( $property, $this->get($property) );
@@ -111,7 +117,7 @@ abstract class WordPress_Object {
 			
 			if ( method_exists( $this, 'the_' . $property ) ){
 				
-				return $this->callThis( 'the_' . $property, $arguments );
+				return $this->call( 'the_' . $property, $arguments );
 			}
 			
 			$value = $this->filter_value( $property, $this->get($property) );
@@ -122,6 +128,7 @@ abstract class WordPress_Object {
 			}
 		}
 	}
+	
 	
 	/* ============ Basic methods ============ */
 	
@@ -174,29 +181,34 @@ abstract class WordPress_Object {
 		$this->__set($prop, $value);
 	}
 	
+	
+	/* ============ Key & Alias methods ============ */
+	
 	/**
-	* Returns the real key from a key or key alias.
+	* Returns assoc. array of keys and aliases
 	*/
-	final function translate_key( $key ){
-		
-		if ( $this->is_key($key) ){
-			return $key;	
+	final function get_keys_and_aliases(){
+		static $keys_aliases;
+		if ( !isset($keys_aliases) ){
+			$keys_aliases = x_wp_get_object_keys( $this->_object_name );
 		}
-		if ( $real_key = $this->get_aliased_key($key) ){
-			return $real_key;
-		}
-		return null;
+		return $keys_aliases;
 	}
 	
 	/**
 	* Returns array of object keys
 	*/
 	final function get_keys(){
-		static $keys;
-		if ( !isset($keys) ){
-			$keys = x_wp_get_object_keys( $this->_object_name );
-		}
-		return $keys;
+	
+		return array_keys( $this->get_keys_and_aliases() );
+	}
+		
+	/**
+	* Returns array of object aliases
+	*/
+	final function get_aliases(){
+	
+		return array_values( $this->get_keys_and_aliases() );	
 	}
 	
 	/**
@@ -208,19 +220,43 @@ abstract class WordPress_Object {
 	}
 	
 	/**
+	* Returns true if passed string is an alias (NOT key)
+	*/
+	final function is_alias( $key ){
+		
+		return in_array( $key, $this->get_aliases() );	
+	}
+	
+	/**
 	* Gets key from alias
 	*/
 	final function get_aliased_key( $alias ){
 		
-		$key = x_wp_get_aliased_object_key( $this->_object_name, $alias );
-		
-		return $key ? $key : null;
+		return array_search( $alias, $this->get_keys_and_aliases() );
 	}
 	
 	/**
-	* Calls method on $this using passed args
+	* Returns the real key from a key or key alias.
 	*/
-	final function callThis( $function, $args = array() ){
+	final function translate_key( $key ){
+		
+		if ( $this->is_key($key) ){
+			return $key;	
+		}
+		if ( $aliased = $this->get_aliased_key($key) ){
+			return $aliased;
+		}
+		return null;
+	}
+	
+	
+	/* ============ Forwarding ============ */
+	
+	/**
+	* Calls $this->$function() using passed $args
+	* Does not check if callable.
+	*/
+	final function call( $function, $args = array() ){
 		
 		if ( empty($args) ){
 			return $this->$function();
@@ -243,19 +279,25 @@ abstract class WordPress_Object {
 				return call_user_func_array( array($this, $function), $args );
 		}
 	}
-	
-	
-	/* ============ WordPress API ============ */
-	
 		
-	/* ==== Taxonomy ==== */
+	/**
+	* Returns callback function string, if set, to use instead of given function.
+	*/
+	protected function getFunctionCallback( $func ){
+		return isset($this->{'_' . $func . '_callback'})
+			? $this->{'_' . $func . '_callback'}
+			: false;
+	}
+	
+	
+	/* ============ WordPress API: Taxonomy ============ */
 	
 	/**
 	* Is the object in the given taxonomy?
 	*/
 	function in_taxonomy( $taxonomy ){
 		
-		return is_object_in_taxonomy( $this->_object_name, $taxonomy );	
+		return in_array( $taxonomy, $this->get_object_taxonomies('names') );	
 	}
 	
 	/**
@@ -352,7 +394,7 @@ abstract class WordPress_Object {
 
 	// Tags
 
-	function get_the_tags( $id = 0 ){
+	function get_the_tags(){
 		return apply_filters( 'get_the_tags', $this->get_the_terms( 'post_tag' ) );
 	}
 
@@ -372,18 +414,13 @@ abstract class WordPress_Object {
 	// Categories
 
 	function get_the_category(){
-		
 		$categories = $this->get_the_terms( 'category' );
-		
 		if ( ! $categories || is_wp_error( $categories ) )
 			$categories = array();
-	
 		$categories = array_values( $categories );
-	
 		foreach ( array_keys( $categories ) as $key ) {
 			_make_cat_compat( $categories[$key] );
 		}
-		// Filter name is plural because we return alot of categories (possibly more than #13237) not just one
 		return apply_filters( 'get_the_categories', $categories );
 	}
 
@@ -404,10 +441,9 @@ abstract class WordPress_Object {
 		return $this->has_term( $category, 'category' );
 	}
 	
-
 	/** The following methods query/save to the DB */
 	
-	// Use get_the_terms() - this function does not cache
+	// NOTE: does not use cache - prefer get_the_terms()
 	function get_object_terms( $taxonomies, $args = array() ){
 		return wp_get_object_terms( $this->get_id(), $taxonomies, $args );
 	}
