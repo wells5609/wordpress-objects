@@ -3,7 +3,7 @@
 Plugin name: WordPress Objects
 Description: Prototype for object-oriented WordPress data (posts, comments, users, etc.). Uses existing WordPress API (functions) and relies heavily on magic methods.
 Author: wells
-Version: 0.1.1
+Version: 0.1.3
 */
 
 if ( function_exists('xpl_autoload') ){
@@ -15,12 +15,13 @@ else {
 	include_once 'classes/Object_Factory.php';	
 	include_once 'classes/Object.php';
 	include_once 'classes/Object_With_Metadata.php';
-	include_once 'classes/Post_Object.php';	
+	include_once 'classes/Post_Object.php';
+	include_once 'classes/User_Object.php';	
 }
 
-add_action('init', '_wp_objects_init');
+add_action('init', '_x_wp_objects_init');
 	
-	function _wp_objects_init(){
+	function _x_wp_objects_init(){
 		
 		x_wp_register_object_keys( 'post', array(
 			'ID',
@@ -63,7 +64,19 @@ add_action('init', '_wp_objects_init');
 			'parent'			=> 'post_parent'
 		));
 		
-		//x_wp_register_object_keys( 'user', array() );
+		x_wp_register_object_keys( 'user', array(
+			'ID',
+			'user_login',
+			'user_pass',
+			'user_nicename',
+			'user_email',
+			'user_url',
+			'user_registered',
+			'user_activation_key',
+			'user_status',
+			'display_name',
+		) );
+		
 		//x_wp_register_object_keys( 'comment', array() );
 		
 	}
@@ -169,4 +182,13 @@ function x_wp_get_post_object( $post_id = null ){
 	}
 	
 	return x_wp_get_object( 'post', $post_id );
+}
+
+function x_wp_get_user_object( $user_id = null ){
+	
+	if ( null === $user_id ){
+		$user_id = get_current_user_ID();	
+	}
+	
+	return x_wp_get_object( 'user', $user_id );
 }

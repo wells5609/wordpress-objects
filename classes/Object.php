@@ -22,6 +22,9 @@ abstract class WordPress_Object {
 	abstract protected function filter_output( $key, $value );
 	
 	
+	/**
+	* Run after construction.
+	*/
 	protected function onImport(){}
 	
 	
@@ -144,12 +147,18 @@ abstract class WordPress_Object {
 	*/
 	final function get( $key ){
 		
+		if ( isset($this->$key) ){
+			
+			return $this->__get($key);	
+		}
+		
 		$prop = $this->translate_key( $key );
 				
-		if ( null !== $prop && isset($this->$prop) ){
+		if ( null !== $prop && $this->__isset($prop) ){
 			
-			return $this->$prop;
+			return $this->__get($prop);
 		}
+		
 		else {
 			return apply_filters( get_class($this) . '/' . $key, null, $prop );
 		}
@@ -162,7 +171,7 @@ abstract class WordPress_Object {
 		
 		$prop = $this->translate_key( $key );	
 		
-		$this->$prop = $value;
+		$this->__set($prop, $value);
 	}
 	
 	/**
@@ -216,7 +225,7 @@ abstract class WordPress_Object {
 		if ( empty($args) ){
 			return $this->$function();
 		}
-		// call_user_func_array() is about 3x slower than direct calls - only use as last resort
+		// call_user_func_array() is ~3x slower than direct calls so use as last resort
 		switch( count($args) ){
 			case 1:
 				return $this->$function( $args[0] );
@@ -396,11 +405,9 @@ abstract class WordPress_Object {
 	}
 	
 
-	// The following save to DB
+	/** The following methods query/save to the DB */
 	
-	/**
-	* Prefer get_the_terms() - this function does not cache
-	*/
+	// Use get_the_terms() - this function does not cache
 	function get_object_terms( $taxonomies, $args = array() ){
 		return wp_get_object_terms( $this->get_id(), $taxonomies, $args );
 	}
@@ -416,6 +423,5 @@ abstract class WordPress_Object {
 	function remove_object_terms( $terms, $taxonomy ){
 		return wp_remove_object_terms( $this->get_id(), $terms, $taxonomy );	
 	}
-	
 	
 }

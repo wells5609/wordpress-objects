@@ -43,6 +43,42 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata {
 	}
 	
 	
+	/* ======= Database methods ======== */
+	
+	function update(){
+		
+		$data = array();
+		$keys = $this->get_keys();
+		
+		foreach($keys as $key){
+			$data[$key] = $this->$key;
+		}
+		
+		return wp_update_post( $data );
+	}
+	
+	function insert(){
+		
+		$pk = $this->_primary_key;
+		
+		if ( isset($this->$pk) && !empty($this->$pk) ){
+			// not a new post => update
+			return $this->update();	
+		}
+		
+		$data = array();
+		$keys = $this->get_keys();
+		
+		unset($keys[$pk]); // remove primary key
+		
+		foreach($keys as $key){
+			$data[$key] = $this->$key;
+		}
+		
+		return wp_insert_post( $data );
+	}
+	
+	
 	/* ======= (Magic) Method Overrides ======== */
 	
 	function the_post_title( $before = '', $after = '' ){
@@ -130,6 +166,11 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata {
 		array_splice($stickies, $offset, 1);
 	
 		update_option('sticky_posts', $stickies);
+	}
+	
+	
+	function get_page_template(){
+		return $this->get_meta( '_wp_page_template', true );	
 	}
 	
 		

@@ -7,13 +7,24 @@ abstract class WordPress_Object_With_Metadata extends WordPress_Object {
 	protected $_meta_type;
 	
 	
+	function setSubProperty( $property, $key, $value ){
+		
+		if ( !isset($this->$property) ){
+			$this->$property = array();
+		}
+		
+		return $this->$property[$key] = $value;
+	}
+	
 	/**
 	* Returns meta value for given key.
 	* Meta is stored in $meta property for subsequent use.
 	*/
-	function get_meta( $key = '', $single = false ){
+	function get_meta( $key = '', $single = false, $property = 'meta' ){
 		
-		if ( empty($this->meta[$key]) ){
+		if ( empty($this->{$property}) || empty($this->{$property}[$key]) ){
+			
+			$this->{$property} = array();
 			
 			if ( $callback = $this->getMetaCallback('get_meta') ){
 				$value = $callback( $this->get_id(), $key, $single );
@@ -22,28 +33,28 @@ abstract class WordPress_Object_With_Metadata extends WordPress_Object {
 				$value = get_metadata( $this->getMetaType(), $this->get_id(), $key, $single );
 			}
 			
-			// value might be array because (1) $single = false or (2) getting all meta entries
-			if ( is_array($value) && (empty($key) || $single) ){
+			// value might be array if getting all meta entries
+			if ( is_array($value) && empty($key) ){
 				foreach($value as $mk => $mv){
-					$this->meta[$mk] = $mv;
+					$this->{$property}[ $mk ] = $mv;
 				}
 			}
 			else {
-				$this->meta[$key] = $value;
+				$this->{$property}[$key] = $value;
 			}
 		}
 		
-		if ( !empty($key) ){
-			return $this->meta[$key];	
+		if ( empty($key) ){
+			return $this->{$property};	
 		}
 		
-		return $this->meta;
+		return $this->{$property}[$key];
 	}
 	
 	/**
 	* Updates a meta entry in the database and resets object property.
 	*/
-	function update_meta( $key, $value, $prev_value = null ){
+	function update_meta( $key, $value, $prev_value = null, $property = 'meta' ){
 				
 		if ( $callback = $this->getMetaCallback(__FUNCTION__) ){
 			$callback( $this->get_id(), $key, $value, $prev_value );
@@ -55,13 +66,13 @@ abstract class WordPress_Object_With_Metadata extends WordPress_Object {
 				update_metadata( $this->getMetaType(), $this->get_id(), $key, $value );
 		}
 		
-		$this->meta[$key] = $value;
+		$this->{$property}[$key] = $value;
 	}
 	
 	/**
 	* Deletes a meta entry from the database and removes from object property.
 	*/
-	function delete_meta( $key, $value = '', $delete_all = false ){
+	function delete_meta( $key, $value = '', $delete_all = false, $property = 'meta' ){
 		
 		if ( $callback = $this->getMetaCallback(__FUNCTION__) ){
 			$callback( $this->get_id(), $key, $value );
@@ -70,8 +81,8 @@ abstract class WordPress_Object_With_Metadata extends WordPress_Object {
 			delete_metadata( $this->getMetaType(), $this->get_id(), $key, $value, $delete_all );
 		}
 		
-		if ( isset($this->meta[$key]) ){
-			unset($this->meta[$key]);
+		if ( isset($this->{$property}[$key]) ){
+			unset($this->{$property}[$key]);
 		}
 	}
 	
