@@ -10,27 +10,23 @@ Version: 0.0.5
 $GLOBALS['_x_wp_object_keys'] = array();
 
 // Setup
-add_action('plugins_loaded', '_x_wp_objects_setup');
+require_once 'interfaces.php';
+
+if ( function_exists('xpl_autoload') ){
 	
-	function _x_wp_objects_setup(){
-			
-		require_once 'interfaces.php';
-		
-		if ( function_exists('xpl_autoload') ){
-			
-			xpl_autoload( 'WordPress', dirname(__FILE__) . '/classes' );	
-		} 
-		else {	
-			include_once 'classes/Object_Factory.php';	
-			include_once 'classes/Object.php';
-			include_once 'classes/Object_With_Metadata.php';
-			// objects
-			include_once 'classes/Post_Object.php';
-			include_once 'classes/User_Object.php';
-			include_once 'classes/Taxonomy_Object.php';
-			include_once 'classes/Term_Object.php';
-		}
-	}
+	xpl_autoload( 'WordPress', dirname(__FILE__) . '/classes' );	
+} 
+else {	
+	include_once 'classes/Object_Factory.php';	
+	include_once 'classes/Object.php';
+	include_once 'classes/Object_With_Metadata.php';
+	// objects
+	include_once 'classes/Post_Object.php';
+	include_once 'classes/User_Object.php';
+	include_once 'classes/Taxonomy_Object.php';
+	include_once 'classes/Term_Object.php';
+}
+
 
 // Initialize
 add_action('init', '_x_wp_objects_init');
