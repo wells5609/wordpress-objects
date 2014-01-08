@@ -10,7 +10,7 @@ abstract class WordPress_Object_With_Metadata extends WordPress_Object {
 	*/
 	function get_meta( $key = '', $single = false, $property = 'meta' ){
 		
-		if ( empty($this->{$property}) || empty($this->{$property}[$key]) ){
+		if ( ( empty($key) && empty($this->{$property}) ) || empty($this->{$property}[$key]) ){
 			
 			$this->{$property} = array();
 			
@@ -22,7 +22,7 @@ abstract class WordPress_Object_With_Metadata extends WordPress_Object {
 			}
 			
 			// value might be array if getting all meta entries
-			if ( is_array($value) && empty($key) ){
+			if ( empty($key) && is_array($value) ){
 				foreach($value as $mk => $mv){
 					$this->{$property}[ $mk ] = $mv;
 				}

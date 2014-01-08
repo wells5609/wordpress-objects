@@ -28,19 +28,26 @@ abstract class WordPress_Object {
 	/* ============ Protected methods (optional) ============ */
 	
 	/**
-	* Called by constructor to continue instantiation.
+	* Called at start of __construct()
 	*/
-	protected function onImport(){}
+	protected function preConstruct(&$data){}
 	
+	/**
+	* Called at end of __construct()
+	*/
+	protected function onConstruct(){}
+		
 	
 	/* ============ Magic methods ============ */
 	
-	// Imports data and calls ->onImport()
+	// Sets data as properties
 	final function __construct( &$data ){
 		
-		$this->import_properties( (array) $data );
+		$this->preConstruct( $data );
 		
-		$this->onImport();
+		$this->import( (array) $data );
+		
+		$this->onConstruct();
 	}
 	
 	// basic __isset()
@@ -50,7 +57,7 @@ abstract class WordPress_Object {
 	
 	// basic __get()
 	function __get( $key ){
-		return isset($this->$key) ? $this->$key : null;
+		return $this->__isset($key) ? $this->$key : null;
 	}
 	
 	// basic __set()
@@ -140,12 +147,12 @@ abstract class WordPress_Object {
 	}
 	
 	/**
-	* Imports an array of data as object properties.
+	* Imports an array of data as object properties and calls ->onImport()
 	*/
-	final function import_properties( array $data ){
+	final function import( array $data ){
 		foreach($data as $k => $v){
 			$this->set( $k, $v );
-		}	
+		}
 	}
 	
 	/**

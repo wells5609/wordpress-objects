@@ -34,3 +34,14 @@ interface WordPress_Hierarchical {
 	function get_children();
 	
 }
+
+// For objects that have "child" objects of a different type (e.g. taxonomies & terms)
+interface WordPress_SubObjects {
+	
+	function get_subobject_type(); // returns string, e.g. 'term'
+		
+	function get_subobject( $id );
+	
+	function get_subobjects();
+		
+}

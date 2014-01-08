@@ -26,17 +26,15 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 	protected static $back_compat_keys;
 	
 	
-	/**
-	* Returns the object data to the factory for object instantiation
-	* The object will not necessarily use this class directly - may be child.
-	*/
+	/* ======== get_instance_data() ======== */
+	
 	static function get_instance_data( $id ){
 		
 		return (array) get_userdata( $id )->data;	
 	}
 	
-	// Called by constructor
-	protected function onImport(){
+	// Called before construction
+	protected function preConstruct(){
 		
 		if ( ! isset( self::$back_compat_keys ) ) {
 			$prefix = $GLOBALS['wpdb']->prefix;
@@ -49,17 +47,18 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 				$prefix . 'usersettingstime' => $prefix . 'user-settings-time',
 			);
 		}
-		
-		$this->init();
 	}
 	
-	// Can be re-called to setup user capabilities for different blog ?
-	public function init( $blog_id = '' ){
+	// called after vars imported
+	protected function onConstruct(){
 		
-		$this->for_blog( $blog_id );	
+		$this->init();	
 	}
-	
-	
+		
+	/* ============================
+		(Magic) Method Overrides 
+	============================= */
+		
 	function __isset( $key ) {
 		if ( 'id' == $key ) {
 			_deprecated_argument( 'WP_User->id', '2.1', __( 'Use <code>WP_User->ID</code> instead.' ) );
@@ -115,6 +114,16 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 	}
 
 
+	/* ============================
+			Custom methods
+	============================= */
+
+	// Can be re-called to setup user capabilities for different blog ?
+	public function init( $blog_id = '' ){
+		
+		$this->for_blog( $blog_id );	
+	}
+	
 	/* ======= Roles/Capabilities ======== */
 	
 	public function for_blog( $blog_id = '' ) {
@@ -167,7 +176,9 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 	}
 	
 		
-	/* ======= Filters ======== */
+	/* =============================
+				Filters 
+	============================== */
 	
 	function filter_value( $key, $value ){
 		
