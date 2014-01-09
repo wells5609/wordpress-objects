@@ -1,7 +1,7 @@
 wordpress-objects
 =================
 
-A prototype project for object-oriented WordPress data types.
+A prototype project for object-oriented WordPress data types (i.e. posts, users, terms, etc).
 
 
 ### Project Overview
@@ -10,8 +10,8 @@ This project aims to provide a consistent and semantic base structure that all W
 
 ##### Goals:
  
- * minimize redundancy
- * maximize consistency
+ * minimize redundancy and maximize consistency among objects
+ * allow developers to customize objects
  * retain current API functionality
  * enable simple transition to the use of traits, once supported.
 
@@ -22,14 +22,15 @@ This project aims to provide a consistent and semantic base structure that all W
 
 Objects are created, stored in, and returned via this "factory" object. This means the `new` keyword will not be used to instantiate a WordPress object (except in special cases).
 
-The factory object takes care of object instantiation and mapping object types to their proper class.
+The factory object takes care of mapping object types to their proper class and instantiation.
+
 
 #### Abstract Classes
 
 There are two abstract classes which form the common object codebase:
 	
- * **`WordPress_Object`** - this is the base abstract class that holds common properties and general methods used for data manipulation and operation (i.e. same for all objects). All data objects inherit this class.
- * **`WordPress_Object_With_Metadata`** - this abstract class extends `WordPress_Object` to provide additional methods and properties to manipulate object metadata, for those that support it. (Trait candidate)
+ * `WordPress_Object` - this is the base abstract class that holds common properties and general methods used for data manipulation and operation (i.e. same for all objects). All data objects inherit this class.
+ * `WordPress_Object_With_Metadata` - this abstract class extends `WordPress_Object` to provide additional methods and properties to manipulate object metadata, for those that support it. (Trait candidate)
 
 With these, one can begin to construct the actual WordPress classes. Any class methods or properties defined beyond this point should be unique to that object so as to avoid redundancy.
 
@@ -58,7 +59,7 @@ The `__call()` method, in particular, is quite important:
 
 This class inherits the `WordPress_Object_With_Metadata` class because posts have metadata.
 
-Each `WordPress_Post_Object` instance represents a single post, _regardless of its post-type_. You can create classes for specific post types, but these will inherit the `WordPress_Post_Object` class.
+Each `WordPress_Post_Object` instance represents a single post, _regardless of its post-type_. Users can create custom classes for post objects meeting certain conditions; these will extend the `WordPress_Post_Object` class.
 
 The methods defined in this class are specific to posts, but not all "post-specific" functionality must be defined (more on that below).
 
@@ -67,9 +68,9 @@ The methods defined in this class are specific to posts, but not all "post-speci
 
 Sometimes we want to access an object property using a different name (key) than that which is defined by the schema.
 
-For example, WordPress accesses post titles (i.e. `$post_title` property of Post objects) using `get_the_title()` and `the_title()` functions. This creates an issue for magically mapped methods, since `title` or `the_title` is not an object property.
+For example, WordPress accesses post titles (i.e. `$post_title` property of Post objects) using `get_the_title()` and `the_title()` functions. This creates an issue for magically mapped methods, since `title` and `the_title` are not object properties.
 
-This is solved using key aliases. In the case above, we can set a key alias for `post_title` as `title` - this will tell the magic methods to use the `$post_title` property for calls to `*_title()` (e.g. `->has_title()`, `->get_title()`, etc.).
+This is solved using key aliases. In the case above, we can set a key alias `title` for `post_title` - this will tell the magic methods to use the `$post_title` property for calls to `*_title()` (e.g. `->has_title()`, `->get_title()`, etc.).
 
 Furthermore, we can override the default magic methods by defining a method using the _key_ name:
 
@@ -95,7 +96,7 @@ $post->the_post_title( '<em>', '</em>' );
 
 ## Examples
 
-Some things are easier shown than said. All examples below will use the `WordPress_Post_Object` class.
+All examples below will use the `WordPress_Post_Object` class.
 
 #### Example 1: Getting an Object from ID
 
