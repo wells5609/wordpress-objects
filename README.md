@@ -39,18 +39,19 @@ The base abstract class; defines core methods used mainly for internal use (not 
  * `get_id()` - returns object's identifier
  * `import( array $data )` - imports array of data as properties
  * `get_object_type()` - returns object's `$objectType` property
- * `get_keys_and_aliases()` - returns assoc. array of `$key => $alias` pairs
  * `get_keys()` - returns array of object keys
- * `get_aliases()` - returns array of object aliases
+ * `get_aliases()` - returns assoc. array of alias/key pairs
  * `is_key( $var )`
  * `is_alias( $var )`
  * `get_aliased_key( $var )` - returns key if passed an alias
  * `translate_key( $var )` - returns key if passed a key or alias, otherwise null.
  * `call( $func, $args = array() )` - calls `$this->$func()` using $args as parameters
 
+
 #### `abstract WordPress_Object_With_Metadata`
 
 **Extends:** `WordPress_Object` 
+
 Adds methods and properties to manipulate object metadata. (trait candidate)
 
 With the classes above, one can begin to construct the actual WP object classes. As a general rule, class methods or properties defined beyond this "point" should be unique to that object.
