@@ -22,22 +22,43 @@ This project aims to provide a consistent and semantic base structure that all W
 
 Objects are created, stored in, and returned via this "factory" object. This means the `new` keyword will not be used to instantiate a WordPress object (except in special cases).
 
-The factory object takes care of mapping object types to their proper class and instantiation.
+The factory object takes care of mapping object types to the desired class as well as instantiation.
+
+##### Methods
+ * `get_object( $object_type, $object_id [, $var = null ] )`
+ * `set_object( $object_type, $object_id [, $var = null ] )`
 
 
-#### Abstract Classes
+####`abstract WordPress_Object`
 
-There are two abstract classes which form the common object codebase:
-	
- * `WordPress_Object` - this is the base abstract class that holds common properties and general methods used for data manipulation and operation (i.e. same for all objects). All data objects inherit this class.
- * `WordPress_Object_With_Metadata` - this abstract class extends `WordPress_Object` to provide additional methods and properties to manipulate object metadata, for those that support it. (Trait candidate)
+The base abstract class; defines core methods used mainly for internal use (not object-specific). All data objects inherit this class.
 
-With these, one can begin to construct the actual WordPress classes. Any class methods or properties defined beyond this point should be unique to that object so as to avoid redundancy.
+#####Methods _also see "Magic Methods" below_
+ * `get( $var )` - gets a property value
+ * `set( $var, $val )` - sets a property value
+ * `get_id()` - returns object's identifier
+ * `import( array $data )` - imports array of data as properties
+ * `get_object_type()` - returns object's `$objectType` property
+ * `get_keys_and_aliases()` - returns assoc. array of `$key => $alias` pairs
+ * `get_keys()` - returns array of object keys
+ * `get_aliases()` - returns array of object aliases
+ * `is_key( $var )`
+ * `is_alias( $var )`
+ * `get_aliased_key( $var )` - returns key if passed an alias
+ * `translate_key( $var )` - returns key if passed a key or alias, otherwise null.
+ * `call( $func, $args = array() )` - calls `$this->$func()` using $args as parameters
+
+#### `abstract WordPress_Object_With_Metadata`
+
+**Extends:** `WordPress_Object` 
+Adds methods and properties to manipulate object metadata. (trait candidate)
+
+With the classes above, one can begin to construct the actual WP object classes. As a general rule, class methods or properties defined beyond this "point" should be unique to that object.
 
 
-## Magic
+## Magic Methods
 
-The classes make use of magic methods, including `__isset()`, `__get()`, `__set()`, and `__call()`. Child classes can override these methods to provide additional functionality (this is actually an essential part of the structure).
+Object classes make use of magic methods, including `__isset()`, `__get()`, `__set()`, and `__call()`. Child classes can override these methods to provide additional functionality (this is actually an essential part of the structure).
 
 The `__call()` method, in particular, is quite important:
 
@@ -106,7 +127,7 @@ $post = x_wp_get_object( 'post', $post_id );
 
 The function above will return a `WordPress_Post_Object` instance by calling:
 ```php
-WordPress_Object_Factory::get_object( 'post', $post_id )`
+WordPress_Object_Factory::get_object( 'post', $post_id );
 ```
 
 We could also call `x_wp_get_post_object( $post_id )` for the same result.
@@ -114,24 +135,20 @@ We could also call `x_wp_get_post_object( $post_id )` for the same result.
 
 #### Example 2: Accessing Object Properties
 
-Using the inherited magic methods, we can access object properties like so:
+Using the magic `__call()` method, we can access object properties like so:
 
 ```php
-// Does object have a post_title property set?
-$post->has_post_title();
-// or $post->has_title();
+// Is $post_title property set?
+$post->has_post_title(); // or $post->has_title();
 
-// Get object's post_title
-$post->get_post_title();
-// or $post->get_title();
+// Return filtered value of $post_title
+$post->get_post_title(); // or $post->get_title();
 
-// Set object's post_title (does not save to DB)
-$post->set_post_title('Something');
-// or $post->set_title('Something');
+// Set parameter $post_title (not saved to DB)
+$post->set_post_title('Something'); // or $post->set_title('Something');
 
-// Echo object's post_title
-$post->the_post_title();
-// or $post->the_title();
+// Print filtered $post_title value filtered for output
+$post->the_post_title(); // or $post->the_title();
 ```
 
 We can also use the methods inherited from the `WordPress_Object_With_Metadata` class:
