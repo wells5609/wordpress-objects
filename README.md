@@ -4,14 +4,16 @@ wordpress-objects
 A prototype project for object-oriented WordPress data types.
 
 
-## WordPress Today
+### Project Overview
 
-WordPress data types (which will henceforth be understood to be posts, users, taxonomies, terms, and the like) lack a common structure, which has created an inconsistent and often inefficient codebase. The developers of WordPress seem to be moving towards object-orientation, starting with the advent of `WP_User` and `WP_Post`. (See [this trac ticket] (https://core.trac.wordpress.org/ticket/12267)). However, the current approach lacks a consistent and replicable structure. This project aims to provide that structure (or at least a possible solution).
+This project aims to provide a consistent and semantic base structure that all WP objects can build upon.
 
-
-## Project Overview
-
-This project provides a base (albeit, so far incomplete) on which to build WordPress objects that minimize redundancy and maximize efficiency, without losing any current functionality. The structure allows for a simple transition to the use of traits, once supported.
+##### Goals:
+ 
+ * minimize redundancy
+ * maximize consistency
+ * retain current API functionality
+ * enable simple transition to the use of traits, once supported.
 
 
 ## Core Classes
@@ -148,6 +150,6 @@ $post->delete_meta( 'metakey', 'value' );
 
 ```
 
-When the `get_meta()` or `update_meta()` methods are called, the result is added to the object so subsequent calls for the same data skip the database query.
+When the `get_meta()` or `update_meta()` methods are called, the result is added to the object.
 
 
