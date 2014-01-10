@@ -8,7 +8,7 @@ A prototype project for object-oriented WordPress data types (i.e. posts, users,
 
 This project aims to provide a consistent and semantic base structure that all WP objects can build upon.
 
-##### Goals:
+#### Primary Goals:
  
  * minimize redundancy and maximize consistency among objects
  * allow developers to customize objects
