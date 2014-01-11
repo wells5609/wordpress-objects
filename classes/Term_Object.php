@@ -1,29 +1,106 @@
 <?php
 
-class WordPress_Term_Object extends WordPress_Object implements WordPress_Hierarchical {
+class WordPress_Term_Object extends WordPress_Object 
+	implements 
+		WordPress_Hierarchical, 
+		WordPress_Permalinked 
+{
 	
 	public $filter; // not DB field
 	
-	protected $taxonomy_object; // not DB field
+	protected $objectType = 'term';
 	
-	protected $_object_name = 'term';
+	protected $primaryKey = 'term_id';
 	
-	protected $_primary_key = 'term_id';
+	protected $taxonomyObject; // not DB field
 	
 	
 	/* ======== get_instance_data() ======== */
 	
-	static function get_instance_data( $term /** , $tax = 'post_tags' */ ){
+	static function get_instance_data( $term /* [, $tax = 'post_tags' ] */ ){
 		
-		$tax = func_get_arg(1);
+		if ( func_num_args() > 1 ){
+			$tax = func_get_arg(1);
+		} else {
+			$tax = 'post_tags';
+		}
 		
-		if ( is_numeric($term) && is_taxonomy_hierarchical($tax) )
+		// Numeric values can be integer or string - term_id can be either.
+		// Avoid false integer casting when non-hierarchical term slug/name is a number
+		// by casting to int only if tax is hierarchical.
+		if ( is_numeric($term) && is_taxonomy_hierarchical($tax) ){
 			$term = intval($term);	
+		}
 		
-		if ( is_string($term) )
-			return get_term_by( 'slug', $term, $tax );
+		if ( is_string($term) ){
+			$the_term = get_term_by( 'slug', $term, $tax );
+			if ( !$the_term ) // slug failed, try name
+				$the_term = get_term_by( 'name', $term, $tax );
+			return $the_term;
+		}
 		
 		return get_term( $term, $tax );
+	}
+	
+	
+	/* ======================================================== 
+		Interface 'WordPress_Permalinked' implementation 
+	========================================================= */
+	
+	public function get_permalink(){
+		
+		return get_term_link( $this );	
+	}
+	
+	public function the_permalink( $text = null, $desc_as_title = true ){
+		
+		if ( null !== $text && isset($this->$text) ){
+			$text = $this->$text;
+		} else {
+			$text = $this->name;
+		}
+		
+		$link = '<a href="' . esc_attr( $this->get_permalink() ) . '"';
+		
+		if ( $desc_as_title )
+			$link .= ' title="' . esc_attr( $this->description ) . '"';
+		
+		$link .= '>' . $text . '</a>';
+		
+		echo $link;
+	}
+	
+	
+	/* ======================================================== 
+		Interface 'WordPress_Hierarchical' implementation 
+	========================================================= */
+	
+	public function is_parent(){
+		return !$this->is_child();
+	}
+	
+	public function is_child(){
+		return 0 != $this->parent;	
+	}
+	
+	public function has_parent(){
+		$parents = $this->get_parents();
+		return !empty($parents);
+	}
+	
+	public function has_children(){
+		$children = $this->get_children();
+		return !empty($children);
+	}
+	
+	public function get_parents(){
+		
+		return $this->get_taxonomy_object()->get_term_parents( $this->get_id() );
+	}
+	
+	public function get_children(){
+		
+		return $this->get_taxonomy_object()->get_term_children( $this->get_id() );
 	}
 	
 	
@@ -36,51 +113,24 @@ class WordPress_Term_Object extends WordPress_Object implements WordPress_Hierar
 			Custom methods
 	============================= */
 
-	function get_taxonomy_object(){
+	public function get_taxonomy_object(){
 		
-		if ( !isset($this->taxonomy_object) ){
-			$this->taxonomy_object =& x_wp_get_taxonomy_object( $this->taxonomy );
+		if ( !isset($this->taxonomyObject) ){
+			$this->taxonomyObject =& x_wp_get_taxonomy_object( $this->taxonomy );
 		}
 		
-		return $this->taxonomy_object;
+		return $this->taxonomyObject;
 	}
 	
-	function get_hierarchy(){
+	public function get_hierarchy(){
 		
-		return $this->get_taxonomy_object()->get_term_hierarchy();	
-	}
-	
-	
-	/* ======================================================== 
-		Interface 'WordPress_Hierarchical' implementation 
-	========================================================= */
-	
-	function is_parent(){
-		return !$this->is_child();
-	}
-	
-	function is_child(){
-		return 0 != $this->parent;	
-	}
-	
-	function has_parent(){
-		$parents = $this->get_parents();
-		return !empty($parents);
-	}
-	
-	function has_children(){
-		$children = $this->get_children();
-		return !empty($children);
-	}
-	
-	function get_parents(){
+		$tax = $this->get_taxonomy_object();
 		
-		return $this->get_taxonomy_object()->get_term_parents( $this->term_id );
-	}
-	
-	function get_children(){
+		if ( !$tax->is_hierarchical() ){
+			return null;
+		}
 		
-		return $this->get_taxonomy_object()->get_term_children( $this->term_id );
+		return $tax->get_term_hierarchy();	
 	}
 	
 	
@@ -88,12 +138,12 @@ class WordPress_Term_Object extends WordPress_Object implements WordPress_Hierar
 				Filters 
 	============================== */
 	
-	function filter_value( $key, $value ){
+	protected function filterValue( $key, $value ){
 		
 		return $value;	
 	}
 	
-	function filter_output( $key, $value ){
+	protected function filterOutput( $key, $value ){
 		
 		return $value;	
 	}

@@ -1,6 +1,25 @@
 <?php
 
-class WordPress_User_Object extends WordPress_Object_With_Metadata {
+class WordPress_User_Object extends WordPress_Object_With_Metadata
+	implements WordPress_Updatable
+{
+	
+	protected $objectType = 'user';
+	
+	protected $primaryKey = 'ID';
+	
+	// makes *_metadata() functions work
+	protected $metaType = 'user';
+
+	// overrides *_metadata() functions
+	protected $callbacks = array(
+		'get_meta'		=> 'get_user_meta',
+		'update_meta'	=> 'update_user_meta',
+		'delete_meta'	=> 'delete_user_meta',
+	);
+	
+	// from WP_User
+	protected static $backCompatKeys;
 	
 	public $caps; // not DB field
 	
@@ -9,21 +28,6 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 	public $roles; // not DB field
 	
 	public $filter; // not DB field
-	
-	protected $_object_name = 'user';
-	
-	protected $_primary_key = 'ID';
-	
-	// makes *_metadata() functions work
-	protected $_meta_type = 'user';
-
-	// overrides *_metadata() functions
-	protected $_get_meta_callback		= 'get_user_meta';
-	protected $_update_meta_callback	= 'update_user_meta';
-	protected $_delete_meta_callback	= 'delete_user_meta';
-	
-	// from WP_User
-	protected static $back_compat_keys;
 	
 	
 	/* ======== get_instance_data() ======== */
@@ -36,9 +40,9 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 	// Called before construction
 	protected function preConstruct(){
 		
-		if ( ! isset( self::$back_compat_keys ) ) {
+		if ( ! isset( self::$backCompatKeys ) ) {
 			$prefix = $GLOBALS['wpdb']->prefix;
-			self::$back_compat_keys = array(
+			self::$backCompatKeys = array(
 				'user_firstname' => 'first_name',
 				'user_lastname' => 'last_name',
 				'user_description' => 'description',
@@ -54,41 +58,86 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 		
 		$this->init();	
 	}
+	
+		
+	/* ========================================================
+		interface 'WordPress_Updatable' implementation 
+	========================================================= */
+	
+	public function update(){
+		
+		$data = array();
+		$keys = $this->get_keys();
+		
+		foreach($keys as $key){
+			$data[$key] = $this->$key;
+		}
+		
+		return wp_update_user( $data );
+	}
+	
+	public function insert(){
+		
+		$pk = $this->_primary_key;
+		
+		if ( isset($this->{$pk}) && !empty($this->{$pk}) ){
+			// not a new post => update
+			return $this->update();	
+		}
+		
+		$data = array();
+		$keys = $this->get_keys();
+		
+		unset($keys[$pk]); // remove primary key
+		
+		foreach($keys as $key){
+			$data[$key] = $this->$key;
+		}
+		
+		return wp_insert_user( (object) $data );
+	}
+	
+	public function delete( $force_delete = false ){
+		
+		return wp_delete_user( $this->get_id(), $force_delete );
+	}
+	
+	public function update_var( $key ){
+		
+		if ( ! $key = $this->translate_key($key) ){
+			return false;
+		}
+	
+		$val = $this->$key;
+		
+		return wp_update_user( array('ID' => $this->get_id(), $key => $val) );
+	}
+	
 		
 	/* ============================
 		(Magic) Method Overrides 
 	============================= */
 		
 	function __isset( $key ) {
-		if ( 'id' == $key ) {
-			_deprecated_argument( 'WP_User->id', '2.1', __( 'Use <code>WP_User->ID</code> instead.' ) );
-			$key = 'ID';
-		}
-
+		// removed _deprecated_argument() functions - 'id' is alias for 'ID'
+		
 		if ( isset( $this->$key ) )
 			return true;
 
-		if ( isset( self::$back_compat_keys[ $key ] ) )
-			$key = self::$back_compat_keys[ $key ];
+		if ( isset( self::$backCompatKeys[ $key ] ) )
+			$key = self::$backCompatKeys[ $key ];
 				
 		return metadata_exists( 'user', $this->get_id(), $key );
 	}
 
-	/**
-	 * Magic method for accessing custom fields
-	 * @since 3.3.0
-	 */
 	function __get( $key ) {
-		if ( 'id' == $key ) {
-			_deprecated_argument( 'WP_User->id', '2.1', __( 'Use <code>WP_User->ID</code> instead.' ) );
-			return $this->get_id();
-		}
-
+		// removed _deprecated_argument() functions - 'id' is alias for 'ID'
+		
 		if ( isset( $this->$key ) ) {
 			$value = $this->$key;
 		} else {
-			if ( isset( self::$back_compat_keys[ $key ] ) )
-				$key = self::$back_compat_keys[ $key ];
+			if ( isset( self::$backCompatKeys[ $key ] ) )
+				$key = self::$backCompatKeys[ $key ];
 			$value = $this->get_meta( $key, true, $key );
 		}
 
@@ -99,17 +148,9 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 		return $value;
 	}
 
-	/**
-	 * Magic method for setting custom fields
-	 * @since 3.3.0
-	 */
 	function __set( $key, $value ) {
-		if ( 'id' == $key ) {
-			_deprecated_argument( '->id', '2.1', __( "Use <code>{$this->_primary_key}</code> instead." ) );
-			$this->ID = $value;
-			return;
-		}
-
+		// removed _deprecated_argument() functions - 'id' is alias for 'ID'
+		
 		$this->$key = $value;
 	}
 
@@ -117,7 +158,45 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 	/* ============================
 			Custom methods
 	============================= */
+	
+	public function has_cap( $capability ){
+		
+		if ( isset($this->allcaps[$capability]) )
+			return $this->allcaps[$capability];
+			
+		if ( is_numeric( $cap ) ) {
+			_deprecated_argument( __FUNCTION__, '2.0', __('Usage of user levels by plugins and themes is deprecated. Use roles and capabilities instead.') );
+			$cap = 'level_' . $cap;
+		}
 
+		$args = array_slice( func_get_args(), 1 );
+		$args = array_merge( array( $cap, $this->get_id() ), $args );
+		$caps = call_user_func_array( 'map_meta_cap', $args );
+
+		// Multisite super admin has all caps by definition, Unless specifically denied.
+		if ( is_multisite() && is_super_admin( $this->get_id() ) ) {
+			if ( in_array('do_not_allow', $caps) )
+				return false;
+			return true;
+		}
+
+		// Must have ALL requested caps
+		$capabilities = apply_filters( 'user_has_cap', $this->allcaps, $caps, $args, $this );
+		$capabilities['exist'] = true; // Everyone is allowed to exist
+		foreach ( (array) $caps as $cap ) {
+			if ( empty( $capabilities[ $cap ] ) )
+				return false;
+		}
+		
+		return true;
+	}
+	
+	// Alias
+	function can( $cap ){
+		return $this->has_cap( $cap );	
+	}
+	
+	
 	// Can be re-called to setup user capabilities for different blog ?
 	public function init( $blog_id = '' ){
 		
@@ -151,10 +230,11 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 		if ( ! is_array($this->caps) )
 			$this->caps = array();
 
-		$this->get_role_caps();
+		$this->initRoleCaps();
 	}
 	
-	public function get_role_caps(){
+	// originally get_role_caps() (not semantic name)
+	protected function initRoleCaps(){
 		global $wp_roles;
 
 		if ( ! isset($wp_roles) )
@@ -180,7 +260,7 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 				Filters 
 	============================== */
 	
-	function filter_value( $key, $value ){
+	protected function filterValue( $key, $value ){
 		
 		switch($key){
 			
@@ -188,7 +268,7 @@ class WordPress_User_Object extends WordPress_Object_With_Metadata {
 		}	
 	}
 	
-	function filter_output( $key, $value ){
+	protected function filterOutput( $key, $value ){
 		
 		switch($key){
 			

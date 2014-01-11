@@ -1,29 +1,70 @@
 <?php
 
-class WordPress_Post_Object extends WordPress_Object_With_Metadata implements WordPress_Updatable, WordPress_Hierarchical {
+class WordPress_Post_Object extends WordPress_Object_With_Metadata 
+	implements 
+		WordPress_Updatable, 
+		WordPress_Hierarchical, 
+		WordPress_Permalinked 
+{
 	
 	public $filter; // not DB field
 	
-	protected $_object_name = 'post';
+	protected $objectType = 'post';
 	
-	protected $_primary_key = 'ID';
+	protected $primaryKey = 'ID';
 	
 	// makes *_metadata() functions work
-	protected $_meta_type = 'post';
+	protected $metaType = 'post';
 
 	// overrides *_metadata() functions
-	protected $_get_meta_callback		= 'get_post_meta';
-	protected $_update_meta_callback	= 'update_post_meta';
-	protected $_delete_meta_callback	= 'delete_post_meta';
-	
+	protected $callbacks = array(
+		'get_meta'		=> 'get_post_meta',
+		'update_meta'	=> 'update_post_meta',
+		'delete_meta'	=> 'delete_post_meta',
+	);
 	
 	/* ======== get_instance_data() ======== */
 	
 	static function get_instance_data( $id ){
+		global $wpdb;
 		
-		return get_post( $id, ARRAY_A );
+		$post_id = (int) $id;
+		
+		if ( ! $post_id ) return false;
+
+		$_post = wp_cache_get( $post_id, 'posts' );
+
+		if ( ! $_post ) {
+			$_post = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $wpdb->posts WHERE ID = %d LIMIT 1", $post_id ) );
+			
+			if ( ! $_post ) return false;
+			
+			$_post = sanitize_post( $_post, 'raw' );
+			
+			wp_cache_add( $_post->ID, $_post, 'posts' );
+		} 
+		elseif ( empty( $_post->filter ) ) {
+			
+			$_post = sanitize_post( $_post, 'raw' );
+		}
+		
+		return $_post;
 	}
-		
+	
+	
+	/* ======================================================== 
+		Interface 'WordPress_Permalinked' implementation 
+	========================================================= */
+	
+	public function get_permalink(){
+		return get_permalink( $this );	
+	}
+	
+	public function the_permalink(){
+		echo esc_url( apply_filters( 'the_permalink', $this->get_permalink() ) );	
+	}
+	
+	
 	/* ======================================================== 
 		Interface 'WordPress_Hierarchical' implementation 
 	========================================================= */
@@ -78,7 +119,9 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 			$data[$key] = $this->$key;
 		}
 		
-		return wp_update_post( $data );
+		$r = wp_update_post( $data );
+		
+		return $r ? true : false;
 	}
 	
 	public function insert(){
@@ -99,7 +142,20 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 			$data[$key] = $this->$key;
 		}
 		
-		return wp_insert_post( $data );
+		$post_id = wp_insert_post( $data, false );
+		
+		if ( 0 !== $post_id ){
+			
+			WordPress_Object_Factory::create_and_set_object( 'post', $post_id );
+			
+			$data = x_wp_get_post_object( $post_id )->to_array();
+			
+			$this->import( $data );
+			
+			return true;
+		}
+		
+		return false;
 	}
 	
 	public function delete( $force_delete = false ){
@@ -115,23 +171,37 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 	
 		$val = $this->$key;
 		
-		return wp_update_post( array('ID' => $this->ID, $key => $val) );
+		$r = wp_update_post( array('ID' => $this->get_id(), $key => $val) );
+		
+		return $r ? true : false;
 	}
 		
 	/* ============================
 		(Magic) Method Overrides 
 	============================= */
 	
+	/**
+	* Returns true if post has parent
+	* @alias has_parent()
+	*/
 	public function has_post_parent(){
 		return 0 !== $this->post_parent;	
 	}
 	
+	/**
+	* Prints the $post_title
+	* @alias the_title()
+	*/
 	public function the_post_title( $before = '', $after = '' ){
 		
-		// Calling ->get_post_title() means the value will be run through filter_value() 
+		// Calling ->get_post_title() means the value will be run through filterValue() 
 		echo $before . $this->get_post_title() . $after;
 	}
 	
+	/**
+	* Prints the $post_content
+	* @alias the_content()
+	*/
 	public function the_post_content( $more_link_text = null, $strip_teaser = false) {
 		$content = $this->get_post_content( $more_link_text, $strip_teaser );
 		$content = apply_filters( 'the_content', $content );
@@ -139,7 +209,12 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 		echo $content;
 	}
 	
+	/**
+	* Returns the $post_content
+	* @alias get_content()
+	*/
 	public function get_post_content( $more_link_text = null, $strip_teaser = false ) {
+		// from get_the_content()
 		global $page, $more, $preview, $pages, $multipage;
 	
 		if ( null === $more_link_text )
@@ -180,7 +255,7 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 				$output .= '<span id="more-' . $this->get_id() . '"></span>' . $content[1];
 			} else {
 				if ( ! empty( $more_link_text ) )
-					$output .= apply_filters( 'the_content_more_link', ' <a href="' . get_permalink( $this->get_id() ) . "#more-{$this->get_id()}\" class=\"more-link\">$more_link_text</a>", $more_link_text );
+					$output .= apply_filters( 'the_content_more_link', ' <a href="' . $this->get_permalink() . "#more-{$this->get_id()}\" class=\"more-link\">$more_link_text</a>", $more_link_text );
 				$output = force_balance_tags( $output );
 			}
 		}
@@ -190,15 +265,22 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 	
 		return $output;
 	}
-		// for consistency with WP API
-		function get_the_excerpt(){
-			return $this->get_post_excerpt();	
-		}
-		// for consistency with WP API
-		function get_the_content( $more_text_link = null, $strip_teaser = false ){
-			return $this->get_post_content( $more_text_link, $strip_teaser );	
-		}
+
+	// for consistency with WP API
+	function get_the_content( $more_text_link = null, $strip_teaser = false ){
+		return $this->get_post_content( $more_text_link, $strip_teaser );	
+	}
+
+	// for consistency with WP API
+	function get_the_excerpt(){
+		return $this->get_post_excerpt();	
+	}
 	
+	// for consistency with WP API
+	function get_the_title(){
+		return $this->get_post_title();
+	}
+		
 	/**
 	* returns $post_date
 	* @alias get_date()
@@ -236,12 +318,38 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 			Custom methods
 	============================= */
 	
+	// from WP_Post
+	public function filter( $filter ) {
+		if ( $this->filter == $filter )
+			return $this;
+
+		if ( $filter == 'raw' )
+			return x_wp_get_post_object( $this->get_id() );
+
+		return sanitize_post( $this, $filter );
+	}
+	
+	// from WP_Post
+	public function to_array() {
+		
+		$post = get_object_vars( $this );
+		foreach ( array( 'ancestors', 'page_template', 'post_category', 'tags_input' ) as $key ) {
+			if ( $this->__isset( $key ) )
+				$post[ $key ] = $this->__get( $key );
+		}
+		return $post;
+	}
+	
 	/* ======== Post-type info ======== */
 	
 	public function is_post_type( $post_types ){
 		if ( !is_array($post_types) )
 			return $this->post_type === $post_types;
 		return in_array($this->post_type, $post_types);	
+	}
+	
+	public function is_revision(){
+		return $this->is_post_type('revision');	
 	}
 	
 	public function is_page(){
@@ -264,31 +372,27 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 		return $this->get_post_type_object()->hierarchical;	
 	}
 	
+	/* ======== Post-type Archive links ======== */
+	
+	public function get_post_type_archive_link(){		
+		return get_post_type_archive_link( $this->post_type );	
+	}
+	
+	public function get_post_type_archive_feed_link( $feed = '' ){
+		return get_post_type_archive_feed_link( $this->post_type, $feed );
+	}
+	
 	/* ======== Password ======== */
 	
 	public function password_required(){
 		return post_password_required( $this );
 	}
 	
-	/* ======== Permalinks ======== */
-	
-	public function get_permalink( $leavename = false ){
-		return get_permalink( $this, $leavename );	
-	}
-	
-	public function the_permalink(){
-		echo esc_url( apply_filters( 'the_permalink', $this->get_permalink() ) );	
-	}
-	
-	/* ======== User editing info ======== */
-	
-	public function get_last_user_to_edit(){
-		return $this->get_meta( '_edit_last', true );
-	}
+	/* ======== Modified author ======== */
 		
-	function get_the_modified_author() {
+	public function get_the_modified_author() {
 		
-		if ( $last_id = $this->get_last_user_to_edit() ) {
+		if ( $last_id = $this->get_meta( '_edit_last', true ) ) {
 			$last_user = get_userdata($last_id);
 			return apply_filters('the_modified_author', $last_user->display_name);
 		}
@@ -300,7 +404,7 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 	* returns timestamp
 	* @uses $post_date, $post_date_gmt
 	*/
-	function get_time( $d = 'U', $gmt = false, $translate = false ) { 
+	public function get_time( $d = 'U', $gmt = false, $translate = false ) { 
 		
 		$time = $gmt ? $this->post_date_gmt : $this->post_date;
 	
@@ -313,7 +417,7 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 	* returns timestamp
 	* @uses $post_date, $post_date_gmt
 	*/
-	function get_modified_time( $d = 'U', $gmt = false, $translate = false ){
+	public function get_modified_time( $d = 'U', $gmt = false, $translate = false ){
 		
 		$time = $gmt ? $this->post_modified_gmt : $this->post_modified;
 		
@@ -325,7 +429,7 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 	
 	/* ======= Sticky post ======== */
 	
-	function is_sticky() {
+	public function is_sticky() {
 		$stickies = get_option('sticky_posts');
 		if ( !is_array( $stickies ) )
 			return false;
@@ -334,7 +438,7 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 		return false;
 	}
 	
-	function unstick_post(){
+	public function unstick_post(){
 		$stickies = get_option('sticky_posts');
 		if ( !is_array($stickies) || ! in_array($this->get_id(), $stickies) )
 			return;
@@ -347,7 +451,7 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 	
 	/* ======= Page template ======== */
 	
-	function get_page_template(){
+	public function get_page_template(){
 		return $this->is_page() ? $this->get_meta( '_wp_page_template', true ) : null;
 	}
 	
@@ -356,7 +460,7 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 				Filters 
 	============================== */
 	
-	function filter_value( $key, $value ){
+	protected function filterValue( $key, $value ){
 		
 		switch($key){
 			
@@ -377,7 +481,7 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 				return apply_filters( 'get_the_guid', $value );
 			
 			case 'post_excerpt':
-				return post_password_required() 
+				return $this->password_required() 
 					? __( 'There is no excerpt because this is a protected post.' ) 
 					: apply_filters( 'get_the_excerpt', $value );
 			
@@ -385,7 +489,7 @@ class WordPress_Post_Object extends WordPress_Object_With_Metadata implements Wo
 		}
 	}
 	
-	function filter_output( $key, $value ){
+	protected function filterOutput( $key, $value ){
 		
 		switch($key){
 			

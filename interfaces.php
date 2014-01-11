@@ -5,7 +5,7 @@
 * @subpackage Interfaces
 */
 
-// Updatable interface
+// Updatable object interface
 interface WordPress_Updatable {
 	
 	function update();
@@ -18,7 +18,7 @@ interface WordPress_Updatable {
 		
 }
 
-// Hierarchical interface
+// Hierarchical object interface
 interface WordPress_Hierarchical {
 	
 	function is_parent();
@@ -35,7 +35,16 @@ interface WordPress_Hierarchical {
 	
 }
 
-// For objects that have "child" objects of a different type (e.g. taxonomies & terms)
+// Permalinked WordPress object interface
+interface WordPress_Permalinked {
+	
+	function get_permalink();
+	
+	function the_permalink();
+	
+}
+
+// For objects that have "child" objects of a different type (e.g. taxonomies have terms)
 interface WordPress_SubObjects {
 	
 	function get_subobject_type(); // returns string, e.g. 'term'
