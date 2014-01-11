@@ -6,7 +6,7 @@ A prototype project for object-oriented WordPress data types (i.e. posts, users,
 
 ### Project Overview
 
-This project aims to provide a consistent and semantic base structure that all WP objects can build upon.
+This project aims to provide a consistent and semantic base structure for all (core) WP objects. It is intended to be a replacement for, not an addition to, the existing object architecture.
 
 #### Primary Goals:
  
@@ -14,6 +14,9 @@ This project aims to provide a consistent and semantic base structure that all W
  * allow developers to customize objects
  * retain current API functionality
  * enable simple transition to the use of traits, once supported.
+
+##### Update 1/11/14
+**Began core integration** - began integrating into core starting with `WP_Post` (currently `WP_Post_Object` to avoid clashes); surprisingly easy; little performance loss (especially considering code now duplicated/unused is still intact - likely overall gain). Only error is a notice on some pages in wp-admin.
 
 
 ## Core Classes
