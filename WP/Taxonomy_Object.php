@@ -1,25 +1,28 @@
 <?php
 
-class WordPress_Taxonomy_Object extends WordPress_Object 
-	implements WordPress_SubObjects 
+class WP_Taxonomy_Object extends WP_Global_Object 
+	implements 
+		WP_SubObjects_Interface 
 {
 	
-	protected $objectType = 'taxonomy';
+	protected $_type = 'taxonomy';
 	
-	protected $primaryKey = 'name';
+	protected $_uid_property = 'name';
 	
 	
 	/* ======== get_instance_data() ======== */
 	
 	static function get_instance_data( $tax ){
 		
-		return get_taxonomy( $tax );	
+		global $wp_taxonomies;
+		
+		return $wp_taxonomies[ $tax ];	
 	}
 	
 	
-	/* ======================================================== 
-		Interface 'WordPress_SubObjects' implementation 
-	========================================================= */
+	/* ======================================= 
+			WP_SubObjects interface
+	======================================= */
 	
 	public function get_subobject_type(){
 		return 'term';
@@ -27,18 +30,13 @@ class WordPress_Taxonomy_Object extends WordPress_Object
 		
 	public function get_subobject( $term ){
 		
-		return x_wp_get_term_object( $term, $this->name );	
+		return wp_get_term_object( $term, $this->name );	
 	}
 	
 	public function get_subobjects(){
 		
 		return get_terms( $this->name );
 	}
-	
-	
-	/* ============================
-		(Magic) Method Overrides 
-	============================= */
 	
 	
 	/* ============================
@@ -138,28 +136,6 @@ class WordPress_Taxonomy_Object extends WordPress_Object
 		return $this->get_label('name');
 	}
 	
-	// is_shown_in_*()
-	
-	public function is_shown_in_ui(){
-		return $this->show_ui;
-	}
-	
-	public function is_shown_in_menu(){
-		return $this->show_in_menu;	
-	}
-	
-	public function is_shown_in_nav_menus(){
-		return $this->show_in_nav_menus;	
-	}
-	
-	public function is_shown_in_tagcloud(){
-		return $this->show_tagcloud;	
-	}
-	
-	public function is_shown_in_admin_column(){
-		return $this->show_admin_column;
-	}
-	
 	// Rewrite
 	
 	public function is_rewrite_with_front(){
@@ -172,21 +148,6 @@ class WordPress_Taxonomy_Object extends WordPress_Object
 	
 	public function get_rewrite_slug(){
 		return $this->rewrite['slug'];	
-	}
-	
-	
-	/* =============================
-				Filters 
-	============================== */
-	
-	protected function filterValue( $key, $value ){
-		
-		return $value;	
-	}
-	
-	protected function filterOutput( $key, $value ){
-		
-		return $value;	
 	}
 	
 }

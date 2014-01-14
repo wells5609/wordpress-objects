@@ -1,9 +1,9 @@
 <?php
 
-class WordPress_Term_Object extends WordPress_Object 
-	implements 
-		WordPress_Hierarchical, 
-		WordPress_Permalinked 
+class WP_Term_Object #extends WP_DB_Object 
+#	implements 
+#		WP_Hierarchy_Interface,
+#		WP_Permalink_Interface 
 {
 	
 	public $filter; // not DB field

@@ -5,21 +5,18 @@
 * @subpackage Interfaces
 */
 
-// Updatable object interface
-interface WordPress_Updatable {
+// Metadata object interface
+interface WP_Metadata_Interface {
 	
-	function update();
+	function get_meta( $meta_key = '', $single = false );
 	
-	function insert();
+	function update_meta( $meta_key, $meta_value, $prev_value = null );
 	
-	function delete( $force_delete = false );
-	
-	function update_var( $key );
-		
+	function delete_meta( $meta_key = '', $meta_value = '', $delete_all = false );
 }
 
 // Hierarchical object interface
-interface WordPress_Hierarchical {
+interface WP_Hierarchy_Interface {
 	
 	function is_parent();
 	
@@ -32,25 +29,22 @@ interface WordPress_Hierarchical {
 	function get_parents();
 	
 	function get_children();
-	
 }
 
 // Permalinked WordPress object interface
-interface WordPress_Permalinked {
+interface WP_Permalink_Interface {
 	
 	function get_permalink();
 	
 	function the_permalink();
-	
 }
 
 // For objects that have "child" objects of a different type (e.g. taxonomies have terms)
-interface WordPress_SubObjects {
+interface WP_SubObjects_Interface {
 	
 	function get_subobject_type(); // returns string, e.g. 'term'
 		
 	function get_subobject( $id );
 	
 	function get_subobjects();
-		
 }

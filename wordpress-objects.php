@@ -3,220 +3,181 @@
 Plugin name: WordPress Objects
 Description: Prototype for object-oriented WordPress data using existing API. Currently implemented as a plug-in
 Author: wells
-Version: 0.0.8
+Version: 0.0.9
 */
 
-// Set global var to hold object keys and aliases
-$GLOBALS['_x_wp_object_keys'] = array();
-
-// Setup
 require_once 'interfaces.php';
+require_once 'WP/Object.php';
+require_once 'WP/DB_Object_With_Taxonomies.php';
+require_once 'WP/Post_Object.php';
+require_once 'WP/User_Object.php';
+require_once 'WP/Taxonomy_Object.php';
+require_once 'WP/Term_Object.php';	
+require_once 'WP/Object_Factory.php';
 
-if ( function_exists('xpl_autoload') ){
+$GLOBALS['wp_object_fields'] = array();
 
-	xpl_autoload( 'WordPress', dirname(__FILE__) . '/classes' );	
-}
-else {	
-	include_once 'classes/Object_Factory.php';	
-	include_once 'classes/Object.php';
-	include_once 'classes/Object_With_Metadata.php';
-	include_once 'classes/Post_Object.php';
-	include_once 'classes/User_Object.php';
-	include_once 'classes/Taxonomy_Object.php';
-	include_once 'classes/Term_Object.php';
-}
+if ( function_exists('is_admin') && is_admin() ){
 
-// Initialize
-add_action('init', '_x_wp_objects_init');
+	add_action('admin_menu', '_wpobjects_admin_menu');	
 	
-	function _x_wp_objects_init(){
-		
-		/**
-		* Register keys (i.e properties) for the object.
-		*/
-		x_wp_register_object_keys( 'post', array(
-			# alias =>	key
-			'id'			=>	'ID',
-			'author'		=>	'post_author',
-			'date'			=>	'post_date',
-			'date_gmt'		=>	'post_date_gmt',
-			'content'		=>	'post_content',
-								'post_content_filtered',
-			'title'			=>	'post_title',
-			'excerpt'		=>	'post_excerpt',
-			'status'		=>	'post_status',
-			'type'			=>	'post_type',
-								'comment_status',
-								'ping_status',
-			'password'		=>	'post_password',
-			'name'			=>	'post_name',
-								'to_ping',
-								'pinged',
-			'modified'		=>	'post_modified',
-			'modified_gmt'	=>	'post_modified_gmt',
-			'parent'		=>	'post_parent',
-								'menu_order',
-								'guid',
-		));
-		
-		// add a "modified_date" alias for "post_modified" property
-		x_wp_register_object_key_alias( 'post', 'post_modified', 'modified_date' );
-	
-		x_wp_register_object_keys( 'user', array(
-			'id'			=> 	'ID',
-			'login'			=>	'user_login',
-			'pass'			=>	'user_pass',
-			'nicename'		=>	'user_nicename',
-			'email'			=>	'user_email',
-			'url'			=>	'user_url',
-			'registered'	=>	'user_registered',
-			'activation_key'=>	'user_activation_key',
-			'status'		=>	'user_status',
-								'display_name',
-		) );
-		
-		x_wp_register_object_keys( 'taxonomy', array(
-								'name', // Primary Key always first in array
-								'labels',
-								'description',
-								'public',
-								'hierarchical',
-								'show_ui',
-								'show_in_menu',
-								'show_in_nav_menus',
-								'show_tagcloud',
-								'meta_box_cb',
-								'rewrite',
-								'query_var',
-								'update_count_callback',
-								'_builtin',
-								'show_admin_column',
-			'capabilities'	=>	'cap',
-								'object_type',
-								'label',
-		) );
-	
-		x_wp_register_object_keys( 'term', array(
-			'id'			=>	'term_id',
-								'name',
-								'slug',
-			'group'			=>	'term_group',
-			'taxonomy_id'	=>	'term_taxonomy_id',
-								'taxonomy',
-								'description',
-								'parent',
-								'count',
-		) );
-		
-	}
-
-
-/**
-* Register keys for an object
-* 
-* @param string $object The "object type" (e.g. post, user, term)
-* @param array $keys Assoc. array of "{key} => {alias}" pairs, where key is an object property
-* @return array $keys
-*/
-function x_wp_register_object_keys( $object, array $keys ){
-	
-	global $_x_wp_object_keys;
-	
-	if ( !isset($_x_wp_object_keys[ $object ]['keys']) )
-		$_x_wp_object_keys[ $object ]['keys'] = array();
-	
-	foreach($keys as $k => $v){
-		
-		$_x_wp_object_keys[ $object ]['keys'][] = $v;
-		
-		if ( !is_int($k) ){ 
-			// $k is not an index, its an alias!
-			x_wp_register_object_key_alias( $object, $v, $k );
-		}
+	function _wpobjects_admin_menu(){
+		add_submenu_page('tools.php', 'WP Objects', 'WP Objects', 'manage_options', 'wp-objects', '_wpobjects_admin_page');
 	}
 	
-	return $_x_wp_object_keys[ $object ];
-}
+	function _wpobjects_admin_page(){
+		if ( ! current_user_can('manage_options') )
+			return 'You are not authorized to view this page.';
+		include 'admin/admin-page.php';	
+	}
 
-function x_wp_register_object_key_alias( $object, $key, $alias ){
-	global $_x_wp_object_keys;
-	if ( !isset($_x_wp_object_keys[ $object ]['aliases']) )
-		$_x_wp_object_keys[ $object ]['aliases'] = array();
-	$_x_wp_object_keys[ $object ]['aliases'][ $alias ] = $key;
 }
 
 /**
-* Returns array of keys for an object.
+* Object fields are used for OO saving of object data to ensure
+* that unwanted data is not passed to the method or function.
 */
-function x_wp_get_object_keys( $object, $empty_response = null ){
+function create_initial_object_fields(){
 	
-	global $_x_wp_object_keys;
+	global $wp_object_fields;
 	
-	if ( isset($_x_wp_object_keys[ $object ]) ){
-		return $_x_wp_object_keys[ $object ]['keys'];
-	}
+	$GLOBALS['wp_object_factory'] = WP_Object_Factory::instance();
 	
-	return $empty_response;
+	// databased objects
+	$wp_object_fields['db'] = array();
+	
+	$wp_object_fields['db']['post'] = array(
+		'post_author',
+		'post_date',
+		'post_date_gmt',
+		'post_content',
+		'post_content_filtered',
+		'post_title',
+		'post_excerpt',
+		'post_status',
+		'post_type',
+		'comment_status',
+		'ping_status',
+		'post_password',
+		'post_name',
+		'to_ping',
+		'pinged',
+		'post_modified',
+		'post_modified_gmt',
+		'post_parent',
+		'menu_order',
+		'guid',
+	);
+	
+	$wp_object_fields['db']['user'] = array(
+		'ID', 
+		'user_login', 
+		'user_pass', 
+		'user_nicename', 
+		'user_email', 
+		'user_url', 
+		'user_registered', 
+		'user_activation_key', 
+		'user_status', 
+		'display_name',
+	);
+	
+	$wp_object_fields['db']['term'] = array(
+		'term_id',
+		'name',
+		'slug',
+		'term_group',
+		'term_taxonomy_id',
+		'taxonomy',
+		'description',
+		'parent',
+		'count',
+	);
+	
+	// global objects
+	$wp_object_fields['global'] = array();
+
+	$wp_object_fields['global']['taxonomy'] = array(
+		'name',
+		'labels',
+		'description',
+		'public',
+		'hierarchical',
+		'show_ui',
+		'show_in_menu',
+		'show_in_nav_menus',
+		'show_tagcloud',
+		'meta_box_cb',
+		'rewrite',
+		'query_var',
+		'update_count_callback',
+		'_builtin',
+		'show_admin_column',
+		'cap',
+		'object_type',
+		'label',
+	);
+	
+#	$wp_object_fields['global']['posttype'] = array();
+
 }
 
-function x_wp_get_object_key_aliases( $object, $empty_response = null ){
-	
-	global $_x_wp_object_keys;
-	
-	if ( isset($_x_wp_object_keys[ $object ]) ){
-		return $_x_wp_object_keys[ $object ]['aliases'];
-	}
 
-	return $empty_response;
+/**
+* Returns base class name for an object type.
+*/
+function _wp_get_object_base_class( $object_type ){
+	return 'WP_' . ucfirst($object_type) . '_Object';
 }
 
+/**
+* Returns an object instance from array of data.
+*/
+function wp_create_object_from_data( $object_type, $data = array() ){
+	
+	return WP_Object_Factory::create_from_data( $object_type, $data );
+}
 
 /**
 * Returns an object instance.
 * $var is a hack for objects that require a second var (i.e. terms)
 */
-function x_wp_get_object( $object_type, $object_id, $var = null ){
+function wp_get_object( $object_type, $object_id, $var = null ){
 	
-	return WordPress_Object_Factory::get_object( $object_type, $object_id, $var );
+	return WP_Object_Factory::get( $object_type, $object_id, $var );
 }
 
 /**
 * Returns a Post object instance.
 */
-function x_wp_get_post_object( $post_id = null ){
-	
+function wp_get_post_object( $post_id = null ){
 	if ( null === $post_id ){
 		global $post;
 		$post_id = $post->ID;	
 	}
-	
-	return x_wp_get_object( 'post', $post_id );
+	return wp_get_object( 'post', $post_id );
 }
 
 /**
 * Returns a User object instance.
 */
-function x_wp_get_user_object( $user_id = null ){
-	
+function wp_get_user_object( $user_id = null ){
 	if ( null === $user_id ){
 		$user_id = get_current_user_ID();	
 	}
-	
-	return x_wp_get_object( 'user', $user_id );
+	return wp_get_object( 'user', $user_id );
 }
 
 /**
 * Returns a Taxonomy object instance.
 */
-function x_wp_get_taxonomy_object( $taxonomy ){
-	
-	return x_wp_get_object( 'taxonomy', $taxonomy );	
+function wp_get_taxonomy_object( $taxonomy ){
+	return wp_get_object( 'taxonomy', $taxonomy );	
 }
 
 /**
 * Returns a Term object instance.
 */
-function x_wp_get_term_object( $term, $taxonomy ){
-	
-	return x_wp_get_object( 'term', $term, $taxonomy );	
+function wp_get_term_object( $term, $taxonomy ){
+	return wp_get_object( 'term', $term, $taxonomy );	
 }

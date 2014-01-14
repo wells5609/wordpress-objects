@@ -1,6 +1,6 @@
 <?php
 
-abstract class WordPress_Object_With_Metadata extends WordPress_Object {
+abstract class WP_Object_With_Metadata extends WP_Object {
 	
 	protected $metaType;
 	

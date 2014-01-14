@@ -1,32 +1,18 @@
 <?php
 
-class WordPress_User_Object extends WordPress_Object_With_Metadata
-	implements WordPress_Updatable
+class WP_User_Object # extends WP_DB_Object 
 {
 	
-	protected $objectType = 'user';
+	protected $_type = 'user';
 	
-	protected $primaryKey = 'ID';
-	
-	// makes *_metadata() functions work
-	protected $metaType = 'user';
-
-	// overrides *_metadata() functions
-	protected $callbacks = array(
-		'get_meta'		=> 'get_user_meta',
-		'update_meta'	=> 'update_user_meta',
-		'delete_meta'	=> 'delete_user_meta',
-	);
+	protected $_uid_property = 'ID';
 	
 	// from WP_User
 	protected static $backCompatKeys;
 	
 	public $caps; // not DB field
-	
 	public $cap_key; // not DB field
-	
 	public $roles; // not DB field
-	
 	public $filter; // not DB field
 	
 	
