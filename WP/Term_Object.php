@@ -1,21 +1,23 @@
 <?php
 
-class WP_Term_Object #extends WP_DB_Object 
-#	implements 
-#		WP_Hierarchy_Interface,
-#		WP_Permalink_Interface 
+class WP_Term_Object extends WP_DB_Object 
+	implements 
+		WP_Hierarchy_Interface,
+		WP_Permalink_Interface 
 {
 	
 	public $filter; // not DB field
 	
-	protected $objectType = 'term';
+	protected $_type = 'term';
 	
-	protected $primaryKey = 'term_id';
+	protected $_uid_property = 'term_id';
 	
 	protected $taxonomyObject; // not DB field
 	
 	
-	/* ======== get_instance_data() ======== */
+	/* ================================
+			get_instance_data() 
+	================================ */
 	
 	static function get_instance_data( $term /* [, $tax = 'post_tags' ] */ ){
 		
@@ -42,10 +44,9 @@ class WP_Term_Object #extends WP_DB_Object
 		return get_term( $term, $tax );
 	}
 	
-	
-	/* ======================================================== 
-		Interface 'WordPress_Permalinked' implementation 
-	========================================================= */
+	/* ====================================
+			WP_Permalink_Interface 
+	==================================== */
 	
 	public function get_permalink(){
 		
@@ -70,10 +71,9 @@ class WP_Term_Object #extends WP_DB_Object
 		echo $link;
 	}
 	
-	
-	/* ======================================================== 
-		Interface 'WordPress_Hierarchical' implementation 
-	========================================================= */
+	/* ====================================
+			WP_Hierarchy_Interface 
+	==================================== */
 	
 	public function is_parent(){
 		return !$this->is_child();
@@ -103,11 +103,83 @@ class WP_Term_Object #extends WP_DB_Object
 		return $this->get_taxonomy_object()->get_term_children( $this->get_id() );
 	}
 	
+	/* ========================================
+			WP_DB_Object abstract methods
+	======================================== */
 	
-	/* ============================
-		(Magic) Method Overrides 
-	============================= */
+	public function get_update_fields(){
+		
+		return array_merge( $this->get_fields(), array('alias_of') );
+	}
 	
+	public function update(){
+		
+		$data = array();
+		
+		foreach($this->get_update_fields() as $key){
+			
+			if ( 'term_id' == $key || ! isset($this->$key) || empty($this->$key) )
+				continue;
+			
+			$data[ $key ] = $this->get( $key );
+		}
+		
+		$r = wp_update_term( $this->get_id(), $this->taxonomy, $data );
+		
+		return $this->catch_return_bool( $r );
+	}
+	
+	public function insert(){
+		
+		if ( ! isset( $this->name ) )
+			return false;
+		
+		$data = array();
+		
+		foreach($this->get_update_fields() as $key){
+			
+			if ( 'name' == $key ) 
+				continue;
+			
+			if ( $this->exists( $key ) ){
+				$data[ $key ] = $this->get( $key );	
+			}
+		}
+		
+		$r = wp_insert_term( $this->name, $this->taxonomy, $data );
+		
+		if ( is_wp_error($r) ){
+			$this->_last_error = $r;
+			return false;
+		}
+		
+		$this->import( wp_get_term_object( $r['term_id'], $this->taxonomy )->to_array() );
+		
+		return true;
+	}
+	
+	public function delete( $force = false ){
+		
+		if ( ! isset( $this->term_id ) ) 
+			return false;
+		
+		$r = wp_delete_term( $this->term_id, $this->taxonomy );
+		
+		return $this->catch_return_bool( $r );
+	}
+	
+	public function update_var( $key ){
+		
+		if ( ! $this->is_update_field( $key ) || ! $this->exists( $key ) )
+			return false;
+		
+		$value = $this->get( $key );
+		
+		$r = wp_update_term( $this->get_id(), $this->taxonomy, array( $key => $value ) );
+		
+		return $this->catch_return_bool( $r );
+	}
+
 
 	/* ============================
 			Custom methods
@@ -116,7 +188,7 @@ class WP_Term_Object #extends WP_DB_Object
 	public function get_taxonomy_object(){
 		
 		if ( !isset($this->taxonomyObject) ){
-			$this->taxonomyObject =& x_wp_get_taxonomy_object( $this->taxonomy );
+			$this->taxonomyObject =& wp_get_taxonomy_object( $this->taxonomy );
 		}
 		
 		return $this->taxonomyObject;
@@ -126,26 +198,11 @@ class WP_Term_Object #extends WP_DB_Object
 		
 		$tax = $this->get_taxonomy_object();
 		
-		if ( !$tax->is_hierarchical() ){
+		if ( ! $tax->is_hierarchical() ){
 			return null;
 		}
 		
 		return $tax->get_term_hierarchy();	
-	}
-	
-	
-	/* =============================
-				Filters 
-	============================== */
-	
-	protected function filterValue( $key, $value ){
-		
-		return $value;	
-	}
-	
-	protected function filterOutput( $key, $value ){
-		
-		return $value;	
 	}
 	
 }

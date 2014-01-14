@@ -71,7 +71,7 @@ class WP_Object_Factory {
 	* Retrieves object data from base class.
 	* 
 	* @param string $object_type The object type (e.g. 'post', 'user')
-	* @param int|string $object_id The identifier for the object (e.g. post ID, tax name)
+	* @param int|string $object_id The identifier for the object (e.g. post ID, tax name), or the data itself.
 	* @param mixed $var An extra variable, currently only for terms (to pass taxonomy)
 	* @return array|object Object data for import.
 	*/

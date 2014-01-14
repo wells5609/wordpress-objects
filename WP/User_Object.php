@@ -1,7 +1,6 @@
 <?php
 
-class WP_User_Object # extends WP_DB_Object 
-{
+class WP_User_Object extends WP_DB_Object {
 	
 	protected $_type = 'user';
 	
@@ -15,8 +14,9 @@ class WP_User_Object # extends WP_DB_Object
 	public $roles; // not DB field
 	public $filter; // not DB field
 	
-	
-	/* ======== get_instance_data() ======== */
+	/* ================================
+			get_instance_data() 
+	================================ */
 	
 	static function get_instance_data( $id ){
 		
@@ -24,7 +24,9 @@ class WP_User_Object # extends WP_DB_Object
 	}
 	
 	// Called before construction
-	protected function preConstruct(){
+	protected function objectInit(){
+	
+		$this->add_action( '__construct.after', array($this, 'init') );
 		
 		if ( ! isset( self::$backCompatKeys ) ) {
 			$prefix = $GLOBALS['wpdb']->prefix;
@@ -36,27 +38,25 @@ class WP_User_Object # extends WP_DB_Object
 				$prefix . 'usersettings' => $prefix . 'user-settings',
 				$prefix . 'usersettingstime' => $prefix . 'user-settings-time',
 			);
-		}
+		}	
 	}
-	
-	// called after vars imported
-	protected function onConstruct(){
-		
-		$this->init();	
-	}
-	
 		
 	/* ========================================================
 		interface 'WordPress_Updatable' implementation 
 	========================================================= */
 	
+	public function get_update_fields(){
+		return array_merge( $this->get_fields, array('first_name', 'last_name', 'description', 'rich_editing', 'role', 'nickname', 'jabber', 'aim', 'yim', 'show_admin_bar_front') );
+	}
+	
 	public function update(){
 		
 		$data = array();
-		$keys = $this->get_keys();
+		$keys = $this->get_update_fields();
 		
 		foreach($keys as $key){
-			$data[$key] = $this->$key;
+			if ( $this->exists( $key ) )
+				$data[$key] = $this->get( $key );
 		}
 		
 		return wp_update_user( $data );
@@ -66,18 +66,19 @@ class WP_User_Object # extends WP_DB_Object
 		
 		$pk = $this->_primary_key;
 		
-		if ( isset($this->{$pk}) && !empty($this->{$pk}) ){
-			// not a new post => update
+		if ( isset($this->ID) && !empty($this->ID) ){
+			// not new => update
 			return $this->update();	
 		}
 		
 		$data = array();
-		$keys = $this->get_keys();
+		$keys = $this->get_update_keys();
 		
 		unset($keys[$pk]); // remove primary key
 		
 		foreach($keys as $key){
-			$data[$key] = $this->$key;
+			if ( $this->exists( $key ) )
+				$data[$key] = $this->get( $key );
 		}
 		
 		return wp_insert_user( (object) $data );
@@ -90,22 +91,23 @@ class WP_User_Object # extends WP_DB_Object
 	
 	public function update_var( $key ){
 		
-		if ( ! $key = $this->translate_key($key) ){
+		if ( ! $this->is_update_field( $key ) ){
 			return false;
 		}
 	
-		$val = $this->$key;
+		$val = $this->get( $key );
 		
 		return wp_update_user( array('ID' => $this->get_id(), $key => $val) );
 	}
 	
 		
 	/* ============================
-		(Magic) Method Overrides 
+		Magic Method Overrides 
 	============================= */
 		
 	function __isset( $key ) {
-		// removed _deprecated_argument() functions - 'id' is alias for 'ID'
+		
+		if ( 'id' == $key ) return isset($this->ID);
 		
 		if ( isset( $this->$key ) )
 			return true;
@@ -117,7 +119,8 @@ class WP_User_Object # extends WP_DB_Object
 	}
 
 	function __get( $key ) {
-		// removed _deprecated_argument() functions - 'id' is alias for 'ID'
+		
+		if ( 'id' == $key ) return isset($this->ID) ? $this->ID : null;
 		
 		if ( isset( $this->$key ) ) {
 			$value = $this->$key;
@@ -127,7 +130,7 @@ class WP_User_Object # extends WP_DB_Object
 			$value = $this->get_meta( $key, true, $key );
 		}
 
-		if ( $this->filter ) {
+		if ( ! empty( $this->filter ) ) {
 			$value = sanitize_user_field( $key, $value, $this->get_id(), $this->filter );
 		}
 
@@ -135,15 +138,36 @@ class WP_User_Object # extends WP_DB_Object
 	}
 
 	function __set( $key, $value ) {
-		// removed _deprecated_argument() functions - 'id' is alias for 'ID'
 		
-		$this->$key = $value;
+		if ( 'id' == $key )
+			$this->ID = $value;
+		else
+			$this->$key = $value;
 	}
 
 
 	/* ============================
 			Custom methods
 	============================= */
+	
+	// Can be re-called to setup user capabilities for different blog... I think ?
+	public function init( $blog_id = '' ){
+		
+		$this->for_blog( $blog_id );	
+	}
+	
+	/* ======= Roles/Capabilities ======== */
+	
+	public function for_blog( $blog_id = '' ) {
+		global $wpdb;
+		
+		if ( ! empty( $blog_id ) )
+			$cap_key = $wpdb->get_blog_prefix( $blog_id ) . 'capabilities';
+		else
+			$cap_key = '';
+		
+		$this->initCaps( $cap_key );
+	}
 	
 	public function has_cap( $capability ){
 		
@@ -180,26 +204,6 @@ class WP_User_Object # extends WP_DB_Object
 	// Alias
 	function can( $cap ){
 		return $this->has_cap( $cap );	
-	}
-	
-	
-	// Can be re-called to setup user capabilities for different blog ?
-	public function init( $blog_id = '' ){
-		
-		$this->for_blog( $blog_id );	
-	}
-	
-	/* ======= Roles/Capabilities ======== */
-	
-	public function for_blog( $blog_id = '' ) {
-		global $wpdb;
-		
-		if ( ! empty( $blog_id ) )
-			$cap_key = $wpdb->get_blog_prefix( $blog_id ) . 'capabilities';
-		else
-			$cap_key = '';
-		
-		$this->initCaps( $cap_key );
 	}
 	
 	// originally WP_User::_init_caps()
@@ -240,28 +244,5 @@ class WP_User_Object # extends WP_DB_Object
 
 		return $this->allcaps;		
 	}
-	
 		
-	/* =============================
-				Filters 
-	============================== */
-	
-	protected function filterValue( $key, $value ){
-		
-		switch($key){
-			
-			default: return $value;	
-		}	
-	}
-	
-	protected function filterOutput( $key, $value ){
-		
-		switch($key){
-			
-			default: return $value;	
-		}		
-	}
-	
-	
-	
 }

@@ -10,7 +10,9 @@ class WP_Taxonomy_Object extends WP_Global_Object
 	protected $_uid_property = 'name';
 	
 	
-	/* ======== get_instance_data() ======== */
+	/* ================================
+			get_instance_data() 
+	================================ */
 	
 	static function get_instance_data( $tax ){
 		

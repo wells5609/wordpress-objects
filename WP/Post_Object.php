@@ -212,7 +212,7 @@ class WP_Post_Object extends WP_DB_Object_With_Taxonomies
 		
 		$this->do_action( __FUNCTION__, 'after', $updated );
 		
-		return $updated ? true : false;
+		return $this->catch_return_bool( $updated );
 	}
 	
 	/**
@@ -243,7 +243,8 @@ class WP_Post_Object extends WP_DB_Object_With_Taxonomies
 		$this->do_action( __FUNCTION__, 'after', $inserted );
 		
 		if ( is_wp_error($inserted) ){
-			return $inserted;
+			$this->_last_error = $inserted;
+			return false;
 		}
 	
 		// no re-instantiation required !
@@ -263,7 +264,7 @@ class WP_Post_Object extends WP_DB_Object_With_Taxonomies
 		
 		$this->do_action( __FUNCTION__, 'after', $deleted );
 		
-		return $deleted;
+		return $this->catch_return_bool( $deleted );
 	}
 	
 	/**
@@ -284,7 +285,7 @@ class WP_Post_Object extends WP_DB_Object_With_Taxonomies
 		
 		$this->do_action( __FUNCTION__, 'after', $updated );
 		
-		return $updated ? true : false;
+		return $this->catch_return_bool( $updated );
 	}
 	
 	/* ============================
@@ -495,7 +496,7 @@ class WP_Post_Object extends WP_DB_Object_With_Taxonomies
 		if ( ! post_type_supports( $this->post_type, 'post-formats' ) )
 			return false;
 		
-		$_format = $this->get_the_terms( 'post_format' );
+		$_format = $this->get_terms( 'post_format' );
 		
 		if ( empty( $_format ) )
 			return false;
@@ -548,23 +549,15 @@ class WP_Post_Object extends WP_DB_Object_With_Taxonomies
 	/**
 	* Returns true if has thumbnail.
 	*/
-	final public function has_post_thumbnail() {
+	final public function has_thumbnail() {
 
 		return (bool) $this->get_thumbnail_id();
 	}
 
 	/**
-	* Prints the thumbnail HTML.
-	*/
-	final public function the_thumbnail( $size = 'post-thumbnail', $attr = '' ) {
-
-		echo $this->get_the_thumbnail( $size, $attr );
-	}
-	
-	/**
 	* Returns the thumbnail HTML.
 	*/
-	final public function get_the_thumbnail( $size = 'post-thumbnail', $attr = '' ) {
+	final public function get_thumbnail( $size = 'post-thumbnail', $attr = '' ) {
 		
 		$post_id			= $this->get_id();
 		$post_thumbnail_id	= $this->get_thumbnail_id();
@@ -586,6 +579,14 @@ class WP_Post_Object extends WP_DB_Object_With_Taxonomies
 		}
 		
 		return apply_filters( 'post_thumbnail_html', $html, $post_id, $post_thumbnail_id, $size, $attr );
+	}
+	
+	/**
+	* Prints the thumbnail HTML.
+	*/
+	final public function the_thumbnail( $size = 'post-thumbnail', $attr = '' ) {
+
+		echo $this->get_thumbnail( $size, $attr );
 	}
 	
 	/* ======= Sticky post ======== */

@@ -3,7 +3,7 @@
 Plugin name: WordPress Objects
 Description: Prototype for object-oriented WordPress data using existing API. Currently implemented as a plug-in
 Author: wells
-Version: 0.0.9
+Version: 0.1.0
 */
 
 require_once 'interfaces.php';
@@ -17,6 +17,14 @@ require_once 'WP/Object_Factory.php';
 
 $GLOBALS['wp_object_fields'] = array();
 
+if ( false !== strpos( dirname(__FILE__), WP_PLUGIN_DIR ) || false !== strpos( dirname(__FILE__), WPMU_PLUGIN_DIR ) ){
+	// loading as plug-in
+	add_action('plugins_loaded', 'create_initial_object_fields');	
+} else {
+	// loading in core
+	create_initial_object_fields();	
+}
+
 if ( function_exists('is_admin') && is_admin() ){
 
 	add_action('admin_menu', '_wpobjects_admin_menu');	
@@ -26,15 +34,13 @@ if ( function_exists('is_admin') && is_admin() ){
 	}
 	
 	function _wpobjects_admin_page(){
-		if ( ! current_user_can('manage_options') )
-			return 'You are not authorized to view this page.';
 		include 'admin/admin-page.php';	
 	}
 
 }
 
 /**
-* Object fields are used for OO saving of object data to ensure
+* Object fields are used mostly for OO saving of object data to ensure
 * that unwanted data is not passed to the method or function.
 */
 function create_initial_object_fields(){

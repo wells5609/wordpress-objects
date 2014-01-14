@@ -8,6 +8,8 @@ abstract class WP_Object {
 	
 	protected $_uid_property;
 	
+	public $_last_error;
+	
 	/* ================================
 			Abstract methods
 	================================ */
@@ -142,6 +144,20 @@ abstract class WP_Object {
 			default:
 				return call_user_func_array( array($this, $function), $args );
 		}
+	}
+	
+	/**
+	* If $r is WP_Error, sets as $_last_error property and returns false, otherwise true. 
+	* Useful for returning a boolean "success" value.
+	*/
+	final public function catch_return_bool( $r ){
+		
+		if ( is_wp_error( $r ) ){
+			$this->_last_error = $r;
+			return false;
+		}
+		
+		return true;	
 	}
 	
 	

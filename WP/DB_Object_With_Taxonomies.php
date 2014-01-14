@@ -17,6 +17,7 @@ abstract class WP_DB_Object_With_Taxonomies extends WP_DB_Object {
 	*/
 	final public function get_taxonomies(){
 		
+		// @TODO: Not all objects will have $post_type property!
 		if ( 'attachment' === $this->post_type )
 			return get_attachment_taxonomies( $this );
 		
@@ -26,6 +27,7 @@ abstract class WP_DB_Object_With_Taxonomies extends WP_DB_Object {
 		
 		foreach ( $wp_taxonomies as $tax_name => $tax_obj ) {
 			if ( array_intersect( $post_types, (array) $tax_obj->object_type ) ) {
+				// what is an "object_type" vs. "post type" ??
 				$taxonomies[ $tax_name ] = $tax_obj;
 			}
 		}
