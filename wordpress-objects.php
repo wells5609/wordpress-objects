@@ -3,7 +3,7 @@
 Plugin name: WordPress Objects
 Description: Prototype for object-oriented WordPress data using existing API. Currently implemented as a plug-in
 Author: wells
-Version: 0.1.0
+Version: 0.1.1
 */
 
 require_once 'interfaces.php';
@@ -14,11 +14,12 @@ require_once 'WP/User_Object.php';
 require_once 'WP/Taxonomy_Object.php';
 require_once 'WP/Term_Object.php';	
 require_once 'WP/Object_Factory.php';
+require_once 'WP/Object_Decorator.php';
 
 $GLOBALS['wp_object_fields'] = array();
 
-if ( false !== strpos( dirname(__FILE__), WP_PLUGIN_DIR ) || false !== strpos( dirname(__FILE__), WPMU_PLUGIN_DIR ) ){
-	// loading as plug-in
+if ( false !== strpos( dirname(__FILE__), WP_PLUGIN_DIR ) ){
+	// load as plug-in
 	add_action('plugins_loaded', 'create_initial_object_fields');	
 } else {
 	// loading in core
@@ -151,6 +152,18 @@ function wp_create_object_from_data( $object_type, $data = array() ){
 function wp_get_object( $object_type, $object_id, $var = null ){
 	
 	return WP_Object_Factory::get( $object_type, $object_id, $var );
+}
+
+
+function decorate_object( WP_Object $object ){
+	
+	$class = _wp_get_object_base_class( $object->get_object_type() ) . '_Decorator';
+	
+	if ( class_exists($class) ){
+		return new $class( $object );
+	}
+	
+	return false;
 }
 
 /**

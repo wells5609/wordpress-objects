@@ -118,11 +118,11 @@ $classes = array('WP_Object', 'WP_Global_Object', 'WP_DB_Object', 'WP_DB_Object_
 									}
 									
 									if ( $method->isPublic() ){
-										echo '<em style="color:#036">Public</em> ';	
+										echo '<em style="color:#666">Public</em> ';	
 									} elseif ( $method->isPrivate() ){
-										echo '<em style="color:#836">Private</em> ';	
+										echo '<em style="color:#653">Private</em> ';	
 									} elseif ($method->isProtected()){
-										echo '<em style="color:#613">Protected</em> ';	
+										echo '<em style="color:#356">Protected</em> ';	
 									}
 									
 									echo '</b>';

@@ -1,97 +1,75 @@
 <?php
-
-class WordPress_XXX_Object extends WordPress_Object/*_With_Meta implements ... */ {
+/** @TODO */
+class WP_XXX_Object extends WP_DB_Object /* or WP_Global_Object
+	implements ... */ 
+{
 	
-	/**
-	* @var string $objectName
-	* 
-	* Lowercase name/slug/type of the object.
+	/** @TODO
+	*
+	* @var string $_type 
+	* Lowercase string representing the object type.
 	*/
-	protected $objectName;			// @TODO
+	protected $_type;
 	
-	/**
-	* @var string $primaryKey
-	* 
-	* The primary key used to identify objects of this type.
+	/** @TODO
+	*
+	* @var string $_uid_property
+	* The identifier used to query objects of this type.
 	*/
-	protected $primaryKey;			// @TODO	
+	protected $_uid_property;
 	
-	/**
-	* @TODO if class extends WordPress_Object_With_Metadata
+	/** @TODO (optional) 
+	*
+	* Additional properties
 	*/
-	//protected $metaType = 'post';
 	
 	
-	// overrides *_metadata() functions
-/*	protected $callbacks = array(
-		'get_meta'		=> 'get_post_meta',
-		'update_meta'	=> 'update_post_meta',
-		'delete_meta'	=> 'delete_post_meta',
-	);
-*/
-
+	/* ================================
+			get_instance_data() 
+	================================ */
 	
-	/* ======== get_instance_data() ======== */
-	
-	/**
+	/** @TODO
+	*
 	* Returns array of object data - imported as properties.
 	*/
-	static public function get_instance_data( $id ){	// @TODO
-	}
+	static public function get_instance_data( $id ){}
 	
 	
-	/**
+	/** @TODO (optional)
+	*
+	* Allows classes to add actions and do other setup processes. 
 	* Called at start of __construct()
 	*/
-	protected function preConstruct(&$data){}			// Optional
+	protected function objectInit(){}
 	
-	/**
-	* Called at end of __construct()
+	
+	/** @TODO if class extends WP_DB_Object: 
+	
+	/* ========================================		
+			WP_DB_Object abstract methods
+	======================================== */
+	/*	
+	public function get_update_fields(){}
+	
+	public function update(){}
+	
+	public function insert(){}
+	
+	public function delete( $force = false ){}
+	
+	public function update_var( $key ){}
+	
 	*/
-	protected function onConstruct(){} 					// Optional
 	
 	
-	/* ======================================================== 
-		Interface XXX implementation 
-	========================================================= */
+	/* ====================================
+			WP_XXX_Interface 
+	==================================== */
 	
-	
-	/* ============================
-		(Magic) Method Overrides 
-	============================= */
 	
 	
 	/* ============================
 			Custom methods
 	============================= */
-	
 		
-	/* =============================
-				Filters 
-	============================== */
-	
-	/**
-	* Filters a property value.
-	*/
-	protected function filterValue( $key, $value ){
-		
-		switch($key){
-			
-			default: return $value;	
-		}	
-	}
-	
-	/**
-	* Filters a property value for output.
-	*/
-	protected function filterOutput( $key, $value ){
-		
-		switch($key){
-			
-			default: return $value;	
-		}
-	}
-	
-	
-	
 }

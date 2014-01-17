@@ -351,9 +351,10 @@ class WP_Post_Object extends WP_DB_Object_With_Taxonomies
 		
 	/**
 	* returns $post_date
-	* @alias get_date()
+	* @rewritten
+	* @see get_the_date()
 	*/
-	final public function get_post_date( $format = '' ){
+	final public function get_date( $format = '' ){
 		
 		if ( empty( $format ) )
 			$format = get_option('date_format');
@@ -363,9 +364,10 @@ class WP_Post_Object extends WP_DB_Object_With_Taxonomies
 	
 	/**
 	* returns $post_modified
-	* @alias get_modified()
+	* @rewritten
+	* @see get_the_modified_date()
 	*/
-	final public function get_post_modified( $format = '' ){
+	final public function get_modified_date( $format = '' ){
 		
 		if ( empty( $format ) )
 			$format = get_option('date_format');
@@ -377,6 +379,7 @@ class WP_Post_Object extends WP_DB_Object_With_Taxonomies
 	
 	/**
 	* returns timestamp
+	* @rewritten
 	* @uses $post_date, $post_date_gmt
 	*/
 	final public function get_time( $d = 'U', $gmt = false, $translate = false ) { 
@@ -388,6 +391,7 @@ class WP_Post_Object extends WP_DB_Object_With_Taxonomies
 	
 	/**
 	* returns timestamp
+	* @rewritten
 	* @uses $post_date, $post_date_gmt
 	*/
 	final public function get_modified_time( $d = 'U', $gmt = false, $translate = false ){

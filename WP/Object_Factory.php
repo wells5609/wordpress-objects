@@ -28,10 +28,7 @@ class WP_Object_Factory {
 		
 		if ( ! isset( self::$objects[ $object_type ][ $object_id ] ) ){
 		
-			$_this = self::instance();
-			$object = $_this->create( $object_type, $object_id, $var );
-			
-			self::set( $object );
+			self::create( $object_type, $object_id, $var );
 		}
 		
 		return self::$objects[ $object_type ][ $object_id ];
@@ -43,7 +40,7 @@ class WP_Object_Factory {
 	* @param WordPress_Object $object A WordPress_Object instance
 	* @return void
 	*/
-	static public function set( WP_Object &$object ){
+	static public function set( WP_Object $object ){
 		
 		return self::$objects[ $object->get_object_type() ][ $object->get_id() ] = $object;
 	}
@@ -93,9 +90,7 @@ class WP_Object_Factory {
 			
 		$class = apply_filters( 'wordpress_object_class', _wp_get_object_base_class( $object_type ), &$data );
 		
-		$object = new $class( $data );
-		
-		return self::set( $object );
+		return self::set( new $class( $data ) );
 	}
 	
 }
