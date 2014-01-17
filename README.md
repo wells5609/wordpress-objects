@@ -21,7 +21,7 @@ This project aims to provide a consistent and semantic base structure for all (c
 
 ## Core Classes
 
-#### `WordPress_Object_Factory`
+#### `WP_Object_Factory`
 
 Objects are created and returned via this "factory" object. This means the `new` keyword will not be used to instantiate a WordPress object except in special cases.
 
