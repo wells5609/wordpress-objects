@@ -206,6 +206,8 @@ abstract class WP_DB_Object extends WP_Object {
 	/* ================================
 			Abstract methods
 	================================ */
+	
+	abstract static function get_instance_data( $id );
 		
 	abstract function update();
 	
