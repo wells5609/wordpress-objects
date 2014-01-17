@@ -103,3 +103,26 @@ WP_Object_Factory::get_object( 'post', $post_id );
 
 We could also call `wp_get_post_object( $post_id )` for the same result.
 
+#### Example 2: Creating a new object programatically
+
+```php
+$new_post = new WP_Post_Object( array() );
+
+$new_post->set( 'post_title', 'A New Title' );
+$new_post->set( 'post_content', 'This is the content.' );
+// etc...
+
+// Will use defaults for properties not set.
+// Set terms after insert
+
+// Insert into DB - returns true if successful
+if ( $new_post->insert() ){
+	
+	// safe to add terms
+	$new_post->set_terms( array($term1, $term2), 'post_tags' );
+	
+	// new properties are available without re-instantiation.
+	$new_id = $new_post->get_id();
+
+}
+```
