@@ -51,6 +51,13 @@ All methods are public unless noted otherwise.
  * `objectInit()` (protected) - allows child classes to add hooks and do other setup processes.
 
 
+#### `abstract WP_Global_Object`
+
+**Extends:** `WP_Object`
+
+Defines the `get_fields()` method. Used by taxonomies and post-types (or anything else that is "global" in scope but not kept in the database).
+
+
 #### `abstract WP_DB_Object`
 
 **Extends:** `WP_Object` 
@@ -59,19 +66,13 @@ Defines the `get_fields()` method and adds additional abstract methods to manipu
 
 #####Methods
  * `get_fields()` (final) - returns fields for this object.
+ * `get_instance_data( $id )` (abstract) - returns assoc. array of data to be imported as properties.
  * `update()` (abstract) - updates object data in database using current properties.
  * `insert()` (abstract) - inserts object data into database using current properties (used with `new` keyword).
  * `delete( $force = false )` (abstract) - deletes object data from database.
  * `update_var()` (abstract) - updates a single object field in the database using current property.
  * `get_update_fields()` (abstract) - returns an indexed array of fields to be used in `update()` and related methods.
  * `is_update_field( $field )` - returns true if $field is in array returned by `get_update_fields()` (classes can overwrite).
-
-
-#### `abstract WP_Global_Object`
-
-**Extends:** `WP_Object`
-
-Defines the `get_fields()` method. Used by taxonomies and post-types (or anything else that is "global" in scope but not kept in the database).
 
 
 #### `abstract WP_DB_Object_With_Taxonomies`
