@@ -1,6 +1,6 @@
 <?php
 
-abstract class WP_Object_Decorator {
+class WP_Object_Decorator {
 	
 	protected $_object;
 	

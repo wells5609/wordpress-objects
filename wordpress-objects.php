@@ -3,7 +3,7 @@
 Plugin name: WordPress Objects
 Description: Prototype for object-oriented WordPress data using existing API. Currently implemented as a plug-in
 Author: wells
-Version: 0.1.1
+Version: 0.1.2
 */
 
 require_once 'interfaces.php';
@@ -18,7 +18,7 @@ require_once 'WP/Object_Decorator.php';
 
 $GLOBALS['wp_object_fields'] = array();
 
-if ( false !== strpos( dirname(__FILE__), WP_PLUGIN_DIR ) ){
+if ( defined('WP_PLUGIN_DIR') && false !== strpos( dirname(__FILE__), WP_PLUGIN_DIR ) ){
 	// load as plug-in
 	add_action('plugins_loaded', 'create_initial_object_fields');	
 } else {
@@ -155,15 +155,16 @@ function wp_get_object( $object_type, $object_id, $var = null ){
 }
 
 
-function decorate_object( WP_Object $object ){
+function wp_decorate_object( WP_Object $object ){
 	
-	$class = _wp_get_object_base_class( $object->get_object_type() ) . '_Decorator';
-	
+	$base_class = _wp_get_object_base_class( $object->get_object_type() );
+
+	$class = $base_class . '_Decorator';
 	if ( class_exists($class) ){
 		return new $class( $object );
 	}
 	
-	return false;
+	return new WP_Object_Decorator( $object );
 }
 
 /**
@@ -174,7 +175,7 @@ function wp_get_post_object( $post_id = null ){
 		global $post;
 		$post_id = $post->ID;	
 	}
-	return wp_get_object( 'post', $post_id );
+	return WP_Object_Factory::get( 'post', $post_id );
 }
 
 /**
@@ -184,19 +185,24 @@ function wp_get_user_object( $user_id = null ){
 	if ( null === $user_id ){
 		$user_id = get_current_user_ID();	
 	}
-	return wp_get_object( 'user', $user_id );
+	return WP_Object_Factory::get( 'user', $user_id );
 }
 
 /**
 * Returns a Taxonomy object instance.
 */
 function wp_get_taxonomy_object( $taxonomy ){
-	return wp_get_object( 'taxonomy', $taxonomy );	
+	return WP_Object_Factory::get( 'taxonomy', $taxonomy );	
 }
 
 /**
 * Returns a Term object instance.
 */
 function wp_get_term_object( $term, $taxonomy ){
-	return wp_get_object( 'term', $term, $taxonomy );	
+	
+	if ( !is_numeric($term) ){
+		$term = get_term_id( $term, $taxonomy );
+	}
+	
+	return WP_Object_Factory::get( 'term', $term, $taxonomy );	
 }

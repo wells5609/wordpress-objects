@@ -24,8 +24,17 @@ class WP_User_Object extends WP_DB_Object {
 	}
 	
 	// Called before construction
-	protected function objectInit(){
+	protected function objectInit( $data ){
 	
+		if ( is_numeric($data) ){
+			$original = $data;
+			$data = get_userdata( $data );
+			if ( is_object($data) ){
+				$data = (array) $data->data;	
+			}
+			else $data = array('ID' => $original);
+		}
+		
 		$this->add_action( '__construct.after', array($this, 'init') );
 		
 		if ( ! isset( self::$backCompatKeys ) ) {
@@ -41,6 +50,45 @@ class WP_User_Object extends WP_DB_Object {
 		}	
 	}
 		
+	/* ====================================
+			WP_Metadata_Interface
+	==================================== */
+	
+	/**
+	* Returns meta value for given key, or all meta if no key given.
+	*/
+	public function get_meta( $meta_key = '', $single = false ){
+		
+		if ( empty($meta_key) )
+			return $this->meta = get_user_meta( $this->get_id(), $meta_key, $single );
+		
+		if ( !isset( $this->meta[ $meta_key ] ) ) 
+			$this->meta[ $meta_key ] = get_user_meta( $this->get_id(), $meta_key, $single );
+		
+		return $this->meta[ $meta_key ];
+	}
+	
+	/**
+	* Updates meta value for given key.
+	*/
+	public function update_meta( $meta_key, $meta_value, $prev_value = null ){
+		
+		update_user_meta( $this->get_id(), $meta_key, $meta_value, $prev_value );
+		
+		return $this->meta[ $meta_key ] = $meta_value;	
+	}
+	
+	/**
+	* Deletes meta value for given key, or all meta if no key given.
+	*/
+	public function delete_meta( $meta_key = '', $meta_value = '', $delete_all = false ){
+		
+		delete_user_meta( $this->get_id(), $meta_key, $meta_value );
+		
+		if ( isset( $this->meta[ $meta_key ] ) )
+			unset( $this->meta[ $meta_key ] );
+	}
+	
 	/* ========================================================
 		interface 'WordPress_Updatable' implementation 
 	========================================================= */

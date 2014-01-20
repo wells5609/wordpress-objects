@@ -32,16 +32,20 @@ class WP_Term_Object extends WP_DB_Object
 		// by casting to int only if tax is hierarchical.
 		if ( is_numeric($term) && is_taxonomy_hierarchical($tax) ){
 			$term = intval($term);	
-		}
+		} elseif ( is_string($term) ){
+			$exists = term_exists( $term, $taxonomy, $parent );
+			if ( !is_array($exists) )
+				return array();
+			$term = $exists['term_id'];
+		} 
 		
-		if ( is_string($term) ){
-			$the_term = get_term_by( 'slug', $term, $tax );
-			if ( !$the_term ) // slug failed, try name
-				$the_term = get_term_by( 'name', $term, $tax );
-			return $the_term;
-		}
+		global $wpdb;
 		
-		return get_term( $term, $tax );
+		$_term = $wpdb->get_row( 
+			$wpdb->prepare("SELECT t.*, tt.* FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.taxonomy = %s AND t.term_id = %d LIMIT 1", $tax, $term) 
+		);
+	
+		return $_term ? $_term : array();
 	}
 	
 	/* ====================================

@@ -60,7 +60,7 @@ abstract class WP_Object {
 	
 	final public function __construct( $data ){
 		
-		$this->objectInit();
+		$this->objectInit( &$data );
 		
 		$this->do_action( __FUNCTION__, 'before', &$data );
 		
@@ -97,7 +97,7 @@ abstract class WP_Object {
 	* Returns the object identifier based on object's $_uid
 	*/
 	final public function get_id(){
-		return $this->get( $this->_uid_property );	
+		return $this->{$this->_uid_property};	
 	}
 	
 	/**
@@ -169,7 +169,7 @@ abstract class WP_Object {
 	* Allows classes to add actions and do other setup processes. 
 	* Called at start of __construct()
 	*/
-	protected function objectInit(){}
+	protected function objectInit( $data ){}
 	
 }
 
